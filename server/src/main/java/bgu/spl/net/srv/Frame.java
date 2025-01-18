@@ -47,4 +47,8 @@ public class Frame {
     public void setBody(String body) {
         this.body = body;
     }
+
+    public void addHeader(String key, String value) {
+        headers.put(key, value);
+    }
 }
