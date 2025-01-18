@@ -1,5 +1,6 @@
 package bgu.spl.net.srv;
 
+import java.util.HashMap;
 import java.util.Map;
 
 public class Frame {
@@ -15,7 +16,7 @@ public class Frame {
 
     public Frame(){
         this.command = null;
-        this.headers = null;
+        this.headers = new HashMap<String, String>();
         this.body = null;
     }
 
