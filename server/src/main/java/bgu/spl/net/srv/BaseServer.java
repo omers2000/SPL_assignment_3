@@ -5,6 +5,7 @@ import bgu.spl.net.api.MessagingProtocol;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 public abstract class BaseServer<T> implements Server<T> {
@@ -14,6 +15,7 @@ public abstract class BaseServer<T> implements Server<T> {
     private final Supplier<MessageEncoderDecoder<T>> encdecFactory;
     private ServerSocket sock;
     private Connections<T> connections;
+    private AtomicInteger clientId;
 
     public BaseServer(
             int port,
@@ -26,6 +28,7 @@ public abstract class BaseServer<T> implements Server<T> {
         this.encdecFactory = encdecFactory;
 		this.sock = null;
         this.connections = connections;
+        this.clientId = new AtomicInteger(0);
     }
 
     @Override
@@ -44,6 +47,10 @@ public abstract class BaseServer<T> implements Server<T> {
                         clientSock,
                         encdecFactory.get(),
                         protocolFactory.get());
+
+                int id = clientId.getAndIncrement();
+                connections.addConnection(id, handler);
+                handler.getProtocol().start(id, connections);
 
                 execute(handler);
             }
