@@ -1,6 +1,6 @@
 #include "Frame.h"
 
-Frame::Frame(const string &command) : command(command) {}
+Frame::Frame(const string &command) : command(command), headers(), body() {}
 
 void Frame::addHeader(const string &key, const string &value)
 {
@@ -28,6 +28,37 @@ string Frame::getBody() const
     return body;
 }
 
+Frame Frame::parseFrame(const string &frameString)
+{
+    vector<string> lines = splitIntoLines(frameString);
+
+    Frame frame(lines[0]);
+    for (int i = 1; i < lines.size() - 1; i++)
+    {
+        int colonPos = lines[i].find(':');
+        string key = lines[i].substr(0, colonPos);
+        string value = lines[i].substr(colonPos + 1);
+        frame.addHeader(key, value);
+    }
+
+    frame.setBody(lines[lines.size() - 1]);
+    return frame;
+}
+
+vector<string> Frame::splitIntoLines(const string &input)
+{
+    vector<string> lines;
+    istringstream stream(input);
+    string line;
+
+    while (getline(stream, line))
+    {
+        lines.push_back(line);
+    }
+
+    return lines;
+}
+
 string Frame::toString() const
 {
     string result = command + "\n";
@@ -35,6 +66,10 @@ string Frame::toString() const
     {
         result += header.first + ": " + header.second + "\n";
     }
-    result += "\n" + body + "\n^@\n";
+    if (!body.empty())
+    {
+        result += "\n" + body + "\n";
+    }
+    result += '\0';
     return result;
 }

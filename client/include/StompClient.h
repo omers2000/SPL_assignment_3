@@ -1,8 +1,9 @@
-#include <string>
 #include "ConnectionHandler.h"
-#include <unordered_map>
 #include "event.h"
 #include "Frame.h"
+
+#include <unordered_map>
+#include <string>
 using namespace std;
 
 class StompClient

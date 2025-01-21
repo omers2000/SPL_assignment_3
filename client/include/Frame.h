@@ -1,5 +1,7 @@
 #include <string>
 #include <map>
+#include <vector>
+#include <sstream>
 using namespace std;
 
 class Frame
@@ -16,6 +18,10 @@ public:
     string getHeader(const string &key) const;
 
     string getBody() const;
+
+    static Frame parseFrame(const string &frameString);
+
+    static vector<string> splitIntoLines(const string &input);
 
     string toString() const;
 

@@ -1,4 +1,3 @@
-#include "../include/StompClient.h"
 #include "StompClient.h"
 
 // Stomp client implementation:
@@ -37,14 +36,13 @@ void StompClient::connect(string &host, short port, string &username, string &pa
 		return;
 	}
 
-	string connectFrame = "CONNECT\n";
-	connectFrame += "accept-version:1.2\n";
-	connectFrame += "host:" + host_ + "\n";
-	connectFrame += "login:" + username_ + "\n";
-	connectFrame += "passcode:" + password_ + "\n\n";
-	connectFrame += '\0';
+	Frame connectFrame("CONNECT");
+	connectFrame.addHeader("accept-version", "1.2");
+	connectFrame.addHeader("host", host_);
+	connectFrame.addHeader("login", username_);
+	connectFrame.addHeader("passcode", password_);
 
-	sendFrame(connectFrame);
+	sendFrame(connectFrame.toString());
 	Frame response = receiveFrame();
 
 	if (response.getCommand() == "CONNECTED")
@@ -60,11 +58,11 @@ void StompClient::connect(string &host, short port, string &username, string &pa
 
 void StompClient::send(string &destination, string &body)
 {
-	string frameToSend = "SEND\n";
-	frameToSend += "destination:" + destination + "\n\n";
-	frameToSend += body + "\n";
+	Frame frameToSend("SEND");
+	frameToSend.addHeader("destination", destination);
+	frameToSend.setBody(body);
 
-	sendFrame(frameToSend);
+	sendFrame(frameToSend.toString());
 	Frame response = receiveFrame();
 
 	if (response.getCommand() == "ERROR")
@@ -75,11 +73,17 @@ void StompClient::send(string &destination, string &body)
 
 void StompClient::subscribe(string &destination)
 {
-	string subscribeFrame = "SUBSCRIBE\n";
-	subscribeFrame += "destination:" + destination + "\n";
-	subscribeFrame += "id:" + to_string(nextSubscriptionID_) + "\n\n";
+	if (channelToSubscriptionID_.find(destination) != channelToSubscriptionID_.end())
+	{
+		cout << "Client is already subscribed to channel " << destination << endl;
+		return;
+	}
 
-	sendFrame(subscribeFrame);
+	Frame subscribeFrame("SUBSCRIBE");
+	subscribeFrame.addHeader("destination", destination);
+	subscribeFrame.addHeader("id", to_string(nextSubscriptionID_));
+
+	sendFrame(subscribeFrame.toString());
 	Frame response = receiveFrame();
 
 	if (response.getCommand() == "RECEIPT")
@@ -103,10 +107,10 @@ void StompClient::unsubscribe(string &destination)
 		return;
 	}
 
-	string unsubscribeFrame = "SUBSCRIBE\n";
-	unsubscribeFrame += "id:" + to_string(channelToSubscriptionID_[destination]) + "\n\n";
+	Frame unsubscribeFrame("UNSUBSCRIBE");
+	unsubscribeFrame.addHeader("id", to_string(channelToSubscriptionID_[destination]));
 
-	sendFrame(unsubscribeFrame);
+	sendFrame(unsubscribeFrame.toString());
 	Frame response = receiveFrame();
 
 	if (response.getCommand() == "RECEIPT")
@@ -130,10 +134,12 @@ void StompClient::report(string &filePath)
 
 void StompClient::disconnect()
 {
-	string disconnectFrame = "DISCONNECT\n";
-	disconnectFrame += "receipt:" + to_string(1111) + "\n\n";
+	Frame disconnectFrame("DISCONNECT");
 
-	sendFrame(disconnectFrame);
+	//todo: replace placeholder receipt number
+	disconnectFrame.addHeader("receipt", to_string(1111));
+
+	sendFrame(disconnectFrame.toString());
 	Frame response = receiveFrame();
 
 	if (response.getCommand() == "RECEIPT")
@@ -161,43 +167,11 @@ Frame StompClient::receiveFrame()
 {
 	string frameString;
 	connectionHandler_->getFrameAscii(frameString, '\0');
-	return parseFrame(frameString);
-}
-
-Frame parseFrame(const string &frameString)
-{
-	vector<string> lines = splitIntoLines(frameString);
-
-	Frame frame(lines[0]);
-	for (int i = 1; i < lines.size() - 1; i++)
-	{
-		int colonPos = lines[i].find(':');
-		string key = lines[i].substr(0, colonPos);
-		string value = lines[i].substr(colonPos + 1);
-		frame.addHeader(key, value);
-	}
-
-	frame.setBody(lines[lines.size() - 1]);
-	return frame;
-}
-
-vector<string> splitIntoLines(const string &input)
-{
-	vector<string> lines;
-	istringstream stream(input);
-	string line;
-
-	while (getline(stream, line))
-	{
-		lines.push_back(line);
-	}
-
-	return lines;
+	return Frame::parseFrame(frameString);
 }
 
 main(int argc, char *argv[])
 {
 	// TODO: implement the STOMP client
-
 	return 0;
 }
