@@ -9,4 +9,12 @@ public interface Connections<T> {
     void send(String channel, T msg);
 
     void disconnect(int connectionId);
+
+    void addConnection(int connectionId, ConnectionHandler<T> handler);
+
+    void addChannel(String channel, int connectionId);
+
+    void addUser(User<T> user);
+
+    User getUser(String username);
 }
