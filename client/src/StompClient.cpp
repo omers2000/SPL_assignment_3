@@ -1,8 +1,8 @@
-#include "StompClient.h"
+#include "../include/StompClient.h"
 
 // Stomp client implementation:
 
-StompClient::StompClient() : loggedIn_(false), nextSubscriptionID_(0) {}
+StompClient::StompClient() : loggedIn_(false), nextSubscriptionID_(0), nextReceiptID_(0), connectionHandler_(nullptr) {}
 
 StompClient::~StompClient()
 {
@@ -62,6 +62,7 @@ void StompClient::send(string &destination, string &body)
 	frameToSend.addHeader("destination", destination);
 	frameToSend.setBody(body);
 
+	//TODO: deal with the case where the user is not subscribed to the channel
 	sendFrame(frameToSend.toString());
 	Frame response = receiveFrame();
 
@@ -86,17 +87,15 @@ void StompClient::subscribe(string &destination)
 	sendFrame(subscribeFrame.toString());
 	Frame response = receiveFrame();
 
-	if (response.getCommand() == "RECEIPT")
-	{
-		cout << "Joined Channel " << destination << endl;
-		channelToSubscriptionID_[destination] = nextSubscriptionID_;
-		nextSubscriptionID_++;
-		channelToEvents_[destination] = vector<Event>();
-	}
-	else if (response.getCommand() == "ERROR")
+	if (response.getCommand() == "ERROR")
 	{
 		// todo: handle error types: User is already subscribed to this channel, etc.
 	}
+
+	cout << "Joined Channel " << destination << endl;
+	channelToSubscriptionID_[destination] = nextSubscriptionID_;
+	nextSubscriptionID_++;
+	channelToEvents_[destination] = vector<Event>();
 }
 
 void StompClient::unsubscribe(string &destination)
@@ -113,18 +112,15 @@ void StompClient::unsubscribe(string &destination)
 	sendFrame(unsubscribeFrame.toString());
 	Frame response = receiveFrame();
 
-	if (response.getCommand() == "RECEIPT")
-	{
-		cout << "Exited Channel " << destination << endl;
-
-		// todo: decide whether to delete the channel from the maps or not
-		channelToSubscriptionID_.erase(destination);
-		channelToEvents_.erase(destination);
-	}
-	else if (response.getCommand() == "ERROR")
+	if (response.getCommand() == "ERROR")
 	{
 		// todo: handle error types: User is already subscribed to this channel, etc.
 	}
+
+	cout << "Exited Channel " << destination << endl;
+	// todo: decide whether to delete the channel from the maps or not
+	channelToSubscriptionID_.erase(destination);
+	channelToEvents_.erase(destination);
 }
 
 void StompClient::report(string &filePath)
@@ -135,9 +131,7 @@ void StompClient::report(string &filePath)
 void StompClient::disconnect()
 {
 	Frame disconnectFrame("DISCONNECT");
-
-	//todo: replace placeholder receipt number
-	disconnectFrame.addHeader("receipt", to_string(1111));
+	disconnectFrame.addHeader("receipt", username_ + "-" + to_string(nextReceiptID_));
 
 	sendFrame(disconnectFrame.toString());
 	Frame response = receiveFrame();
@@ -146,6 +140,7 @@ void StompClient::disconnect()
 	{
 		cout << "Disconnected from server" << endl;
 		connectionHandler_->close();
+		nextReceiptID_++;
 	}
 	else if (response.getCommand() == "ERROR")
 	{
@@ -170,7 +165,7 @@ Frame StompClient::receiveFrame()
 	return Frame::parseFrame(frameString);
 }
 
-main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
 	// TODO: implement the STOMP client
 	return 0;

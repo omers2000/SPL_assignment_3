@@ -8,8 +8,6 @@
 #include <sstream>
 #include <cstring>
 
-#include "../include/keyboardInput.h"
-
 using namespace std;
 using json = nlohmann::json;
 
@@ -24,11 +22,13 @@ Event::~Event()
 {
 }
 
-void Event::setEventOwnerUser(std::string setEventOwnerUser) {
+void Event::setEventOwnerUser(std::string setEventOwnerUser)
+{
     eventOwnerUser = setEventOwnerUser;
 }
 
-const std::string &Event::getEventOwnerUser() const {
+const std::string &Event::getEventOwnerUser() const
+{
     return eventOwnerUser;
 }
 
@@ -62,51 +62,63 @@ const std::string &Event::get_description() const
     return this->description;
 }
 
-Event::Event(const std::string &frame_body): channel_name(""), city(""), 
-                                             name(""), date_time(0), description(""), general_information(),
-                                             eventOwnerUser("")
+Event::Event(const std::string &frame_body) : channel_name(""), city(""),
+                                              name(""), date_time(0), description(""), general_information(),
+                                              eventOwnerUser("")
 {
     stringstream ss(frame_body);
     string line;
     string eventDescription;
     map<string, string> general_information_from_string;
     bool inGeneralInformation = false;
-    while(getline(ss,line,'\n')){
+    while (getline(ss, line, '\n'))
+    {
         vector<string> lineArgs;
-        if(line.find(':') != string::npos) {
+        if (line.find(':') != string::npos)
+        {
             split_str(line, ':', lineArgs);
             string key = lineArgs.at(0);
             string val;
-            if(lineArgs.size() == 2) {
+            if (lineArgs.size() == 2)
+{
                 val = lineArgs.at(1);
             }
-            if(key == "user") {
+            if (key == "user")
+            {
                 eventOwnerUser = val;
             }
-            if(key == "channel name") {
+            if (key == "channel name")
+            {
                 channel_name = val;
             }
-            if(key == "city") {
+            if (key == "city")
+            {
                 city = val;
             }
-            else if(key == "event name") {
+            else if (key == "event name")
+            {
                 name = val;
             }
-            else if(key == "date time") {
+            else if (key == "date time")
+            {
                 date_time = std::stoi(val);
             }
-            else if(key == "general information") {
+            else if (key == "general information")
+            {
                 inGeneralInformation = true;
                 continue;
             }
-            else if(key == "description") {
-                while(getline(ss,line,'\n')) {
+            else if (key == "description")
+            {
+                while (getline(ss, line, '\n'))
+                {
                     eventDescription += line + "\n";
                 }
                 description = eventDescription;
             }
 
-            if(inGeneralInformation) {
+            if (inGeneralInformation)
+            {
                 general_information_from_string[key.substr(1)] = val;
             }
         }
@@ -143,4 +155,15 @@ names_and_events parseEventsFile(std::string json_path)
     names_and_events events_and_names{channel_name, events};
 
     return events_and_names;
+}
+
+// Function to split a string by a delimiter
+void split_str(const std::string &s, char delimiter, std::vector<std::string> &tokens)
+{
+    std::string token;
+    std::istringstream tokenStream(s);
+    while (std::getline(tokenStream, token, delimiter))
+    {
+        tokens.push_back(token);
+    }
 }

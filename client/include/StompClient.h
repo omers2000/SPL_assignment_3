@@ -17,6 +17,7 @@ private:
     string username_;
     string password_;
     int nextSubscriptionID_;
+    int nextReceiptID_;
     unordered_map<string, int> channelToSubscriptionID_;
     unordered_map<string, vector<Event>> channelToEvents_;
 
