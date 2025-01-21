@@ -32,7 +32,6 @@ public class StompMessageEncoderDecoder implements MessageEncoderDecoder<Frame> 
             this.headerVal = popString();
             this.result.addHeader(headerName, headerVal);
             this.headerName = null;
-            this.headerVal = null;
         }
         else if (nextByte == '\n' & currentSection == Section.HEADERS & prevByte == '\n') {
             this.currentSection = Section.BODY;
@@ -54,17 +53,6 @@ public class StompMessageEncoderDecoder implements MessageEncoderDecoder<Frame> 
     public byte[] encode(Frame message) {
         return frameString(message).getBytes();
     }
-
-    /**
-     * Check if the frame is complete
-     * @return true if the frame is complete, false otherwise
-     */
-    // private boolean isFrameComplete() {
-    //     if (result.getCommand() != null && result.getBody() != null && result.getHeaders() != null) {
-    //         return true;
-    //     }
-    //     return false;
-    // }
 
     private void pushByte(byte nextByte) {
         if (len >= bytes.length) {
