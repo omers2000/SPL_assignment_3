@@ -1,6 +1,5 @@
 CFLAGS:=-c -Wall -Weffc++ -g -std=c++11 -Iinclude
 LDFLAGS:=-lboost_system -lpthread
-# TODO change the makefile for StompEMIlient
 all: StompEMIClient
 
 EchoClient: bin/ConnectionHandler.o bin/echoClient.o

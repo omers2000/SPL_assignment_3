@@ -1,6 +1,112 @@
 #include "../include/StompClient.h"
+#include <fstream>
 
 // Stomp client implementation:
+int main(int argc, char *argv[])
+{
+	StompClient client;
+	string command;
+	vector<string> commandArgs;
+	while (true)
+	{
+		cout << "Enter command and arguments (send, subscribe, unsubscribe, report, summarize, disconnect, exit): ";
+		cin >> command;
+		split_str(command, ' ', commandArgs);
+
+		if (commandArgs[0] == "login")
+		{
+			if (commandArgs.size() < 5)
+			{
+				cout << "Usage: login <host> <port> <username> <password>" << endl;
+			}
+			else
+			{
+				string hostPortString = commandArgs[1];
+				size_t colonPos = hostPortString.find(':');
+				if (colonPos == string::npos)
+				{
+					cout << "Invalid host:port format" << endl;
+					continue;
+				}
+				string host = hostPortString.substr(0, colonPos);
+				short port = stoi(hostPortString.substr(colonPos + 1));
+
+				string username = commandArgs[2];
+				string password = commandArgs[3];
+				client.connect(host, port, username, password);
+			}
+		}
+		if (client.isLoggedIn() == false)
+		{
+			cout << "You must login first" << endl;
+			continue;
+		}
+
+		else if (commandArgs[0] == "join")
+		{
+			if (commandArgs.size() < 2)
+			{
+				cout << "Usage: join <destination>" << endl;
+			}
+			else
+			{
+				string destination = commandArgs[1];
+				client.subscribe(destination);
+			}
+		}
+		else if (commandArgs[0] == "exit")
+		{
+			if (commandArgs.size() < 2)
+			{
+				cout << "Usage: exit <destination>" << endl;
+			}
+			else
+			{
+				string destination = commandArgs[1];
+				client.unsubscribe(destination);
+			}
+		}
+		else if (commandArgs[0] == "report")
+		{
+			if (commandArgs.size() < 2)
+			{
+				cout << "Usage: report <file path>" << endl;
+			}
+			else
+			{
+				string filePath = commandArgs[1];
+				client.report(filePath);
+			}
+		}
+		else if (commandArgs[0] == "summary")
+		{
+			if (commandArgs.size() < 4)
+			{
+				cout << "Usage: summary <channel name> <user> <output file path>" << endl;
+			}
+			else
+			{
+				string channelName = commandArgs[1];
+				string user = commandArgs[2];
+				string outputFile = commandArgs[3];
+				client.summarize(channelName, user, outputFile);
+			}
+		}
+		else if (commandArgs[0] == "logout")
+		{
+			client.disconnect();
+			break;
+		}
+
+		else
+		{
+			cout << "Unknown command" << endl;
+		}
+
+		commandArgs.clear();
+		return 0;
+	}
+}
 
 StompClient::StompClient() : loggedIn_(false), nextSubscriptionID_(0), nextReceiptID_(0), connectionHandler_(nullptr) {}
 
@@ -62,7 +168,7 @@ void StompClient::send(string &destination, string &body)
 	frameToSend.addHeader("destination", destination);
 	frameToSend.setBody(body);
 
-	//TODO: deal with the case where the user is not subscribed to the channel
+	// TODO: deal with the case where the user is not subscribed to the channel
 	sendFrame(frameToSend.toString());
 	Frame response = receiveFrame();
 
@@ -114,7 +220,7 @@ void StompClient::unsubscribe(string &destination)
 
 	if (response.getCommand() == "ERROR")
 	{
-		// todo: handle error types: User is already subscribed to this channel, etc.
+		// todo: handle error
 	}
 
 	cout << "Exited Channel " << destination << endl;
@@ -125,11 +231,32 @@ void StompClient::unsubscribe(string &destination)
 
 void StompClient::report(string &filePath)
 {
-	// Report implementation
+	try
+	{
+		names_and_events names_and_events = parseEventsFile(filePath);
+		for (Event event : names_and_events.events)
+		{
+			string eventString = event.toString();
+			send(names_and_events.channel_name, eventString);
+			// todo: check if the event was sent successfully
+			channelToEvents_[names_and_events.channel_name].push_back(event);
+		}
+	}
+	catch (const std::exception &e)
+	{
+		// todo: handle error properly
+		cerr << "Couldn't read file: " << e.what() << endl;
+	}
 }
 
 void StompClient::disconnect()
 {
+	if (!loggedIn_)
+	{
+		cout << "The client is not logged in." << endl;
+		return;
+	}
+
 	Frame disconnectFrame("DISCONNECT");
 	disconnectFrame.addHeader("receipt", username_ + "-" + to_string(nextReceiptID_));
 
@@ -150,7 +277,75 @@ void StompClient::disconnect()
 
 void StompClient::summarize(string &channelName, string &user, string &outputFile)
 {
-	// Summarize implementation
+	if (channelToEvents_.find(channelName) == channelToEvents_.end())
+	{
+		cerr << "Channel " << channelName << " not found." << endl;
+		return;
+	}
+
+	vector<Event> events = channelToEvents_[channelName];
+	vector<Event> userEvents;
+
+	// Filter events by user
+	for (const auto &event : events)
+	{
+		if (event.getEventOwnerUser() == user)
+		{
+			userEvents.push_back(event);
+		}
+	}
+
+	if (userEvents.empty())
+	{
+		cerr << "No events found for user " << user << " in channel " << channelName << "." << endl;
+		return;
+	}
+
+	// Aggregate event information
+	int totalReports = userEvents.size();
+	int activeCount = 0;
+	int forcesArrivalCount = 0;
+
+	for (const auto &event : userEvents)
+	{
+		if (event.get_general_information().at("active") == "true")
+		{
+			activeCount++;
+		}
+		if (event.get_general_information().at("forces arrival at scene") == "true")
+		{
+			forcesArrivalCount++;
+		}
+	}
+
+	// Write summary to output file
+	ofstream outFile(outputFile);
+	if (!outFile.is_open())
+	{
+		cerr << "Could not open file " << outputFile << " for writing." << endl;
+		return;
+	}
+
+	outFile << "Channel " << channelName << "\n";
+	outFile << "Stats:\n";
+	outFile << "Total: " << totalReports << "\n";
+	outFile << "active: " << activeCount << "\n";
+	outFile << "forces arrival at scene: " << forcesArrivalCount << "\n";
+	outFile << "Event Reports:\n";
+
+	// todo: ensure that Reports are sorted by date_time by time and after that by event_name lexicographically.
+	int reportNumber = 1;
+	for (const auto &event : userEvents)
+	{
+		outFile << "Report_" << reportNumber++ << ":\n";
+		outFile << "city: " << event.get_city() << "\n";
+		outFile << "date time: " << event.get_date_time() << "\n";
+		outFile << "event name: " << event.get_name() << "\n";
+		outFile << "summary: " << event.get_description() << "\n";
+		outFile << "\n";
+	}
+
+	outFile.close();
 }
 
 void StompClient::sendFrame(const string &frame)
@@ -165,8 +360,53 @@ Frame StompClient::receiveFrame()
 	return Frame::parseFrame(frameString);
 }
 
-int main(int argc, char *argv[])
+// Function to split a string by a delimiter
+void split_str(const std::string &s, char delimiter, std::vector<std::string> &tokens)
 {
-	// TODO: implement the STOMP client
-	return 0;
+	std::string token;
+	std::istringstream tokenStream(s);
+	while (std::getline(tokenStream, token, delimiter))
+	{
+		tokens.push_back(token);
+	}
+}
+
+bool StompClient::isLoggedIn() const
+{
+	return loggedIn_;
+}
+
+string StompClient::getHost() const
+{
+	return host_;
+}
+
+short StompClient::getPort() const
+{
+	return port_;
+}
+
+string StompClient::getUsername() const
+{
+	return username_;
+}
+
+string StompClient::getPassword() const
+{
+	return password_;
+}
+
+int StompClient::getNextSubscriptionID() const
+{
+	return nextSubscriptionID_;
+}
+
+int StompClient::getNextReceiptID() const
+{
+	return nextReceiptID_;
+}
+
+ConnectionHandler *StompClient::getConnectionHandler() const
+{
+	return connectionHandler_;
 }

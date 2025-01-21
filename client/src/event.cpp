@@ -126,6 +126,21 @@ Event::Event(const std::string &frame_body) : channel_name(""), city(""),
     general_information = general_information_from_string;
 }
 
+string Event::toString() const
+{
+    string eventString = "user: " + eventOwnerUser + "\n";
+    eventString += "city: " + city + "\n";
+    eventString += "event name: " + name + "\n";
+    eventString += "date time: " + to_string(date_time) + "\n";
+    eventString += "general information:\n";
+    for (auto &info : general_information)
+    {
+        eventString += "\t" + info.first + ": " + info.second + "\n";
+    }
+    eventString += "description:\n" + description;
+    return eventString;
+}
+
 names_and_events parseEventsFile(std::string json_path)
 {
     std::ifstream f(json_path);
