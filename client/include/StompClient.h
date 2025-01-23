@@ -1,17 +1,16 @@
-#include "ConnectionHandler.h"
+#include "StompProtocol.h"
 #include "event.h"
 #include "Frame.h"
 
 #include <unordered_map>
 #include <string>
+
 using namespace std;
 
 class StompClient
 {
 private:
-    ConnectionHandler *connectionHandler_;
-    string host_;
-    short port_;
+    StompProtocol *stompProtocol_;
     bool loggedIn_;
 
     string username_;
@@ -20,27 +19,6 @@ private:
     int nextReceiptID_;
     unordered_map<string, int> channelToSubscriptionID_;
     unordered_map<string, vector<Event>> channelToEvents_;
-
-    /**
-     * @brief Sends a STOMP frame to the server.
-     * 
-     * This function takes a STOMP frame as a string and sends it to the server.
-     * 
-     * @param frame The STOMP frame to be sent. It should be a properly formatted
-     *              STOMP frame string.
-     */
-    void sendFrame(const string &frame);
-
-    
-    /**
-     * @brief Receives a frame from the STOMP server.
-     * 
-     * This function waits for and retrieves the next available frame from the 
-     * STOMP server. It blocks until a frame is received.
-     * 
-     * @return Frame The received frame.
-     */
-    Frame receiveFrame();
 
 public:
     /**
@@ -61,15 +39,21 @@ public:
      * @param username The username for authentication.
      * @param password The password for authentication.
      */
-    void connect(string &host, short port, string &username, string &password);
+    void login(string &host, short port, string &username, string &password);
 
     /**
-     * @brief Sends a message to a specified destination.
+     * @brief Subscribes to a specified destination.
      *
-     * @param destination The destination to send the message to.
-     * @param body The body of the message.
+     * @param destination The destination to subscribe to.
      */
-    void send(string &destination, string &body);
+    void join(string &destination);
+
+    /**
+     * @brief Unsubscribes from a specified destination.
+     *
+     * @param destination The destination to unsubscribe from.
+     */
+    void exit(string &destination);
 
     /**
      * @brief Reports events from a specified file.
@@ -79,23 +63,9 @@ public:
     void report(string &filePath);
 
     /**
-     * @brief Subscribes to a specified destination.
-     *
-     * @param destination The destination to subscribe to.
-     */
-    void subscribe(string &destination);
-
-    /**
-     * @brief Unsubscribes from a specified destination.
-     *
-     * @param destination The destination to unsubscribe from.
-     */
-    void unsubscribe(string &destination);
-
-    /**
      * @brief Disconnects from the STOMP server.
      */
-    void disconnect();
+    void logout();
 
     /**
      * @brief Summarizes events for a specified channel and user, and writes the summary to an output file.
@@ -107,71 +77,57 @@ public:
     void summarize(string &channelName, string &user, string &outputFile);
 
     /**
-     * @brief Gets the connection handler.
-     * 
-     * @return ConnectionHandler* The connection handler.
+     * @brief Gets the STOMP protocol.
+     *
+     * @return StompProtocol* The STOMP protocol.
      */
-    ConnectionHandler* getConnectionHandler() const;
-
-    /**
-     * @brief Gets the host.
-     * 
-     * @return string The host.
-     */
-    string getHost() const;
-
-    /**
-     * @brief Gets the port.
-     * 
-     * @return short The port.
-     */
-    short getPort() const;
+    StompProtocol *getProtocol() const;
 
     /**
      * @brief Checks if the client is logged in.
-     * 
+     *
      * @return bool True if logged in, false otherwise.
      */
     bool isLoggedIn() const;
 
     /**
      * @brief Gets the username.
-     * 
+     *
      * @return string The username.
      */
     string getUsername() const;
 
     /**
      * @brief Gets the password.
-     * 
+     *
      * @return string The password.
      */
     string getPassword() const;
 
     /**
      * @brief Gets the next subscription ID.
-     * 
+     *
      * @return int The next subscription ID.
      */
     int getNextSubscriptionID() const;
 
     /**
      * @brief Gets the next receipt ID.
-     * 
+     *
      * @return int The next receipt ID.
      */
     int getNextReceiptID() const;
 
     /**
      * @brief Gets the channel to subscription ID map.
-     * 
+     *
      * @return unordered_map<string, int> The channel to subscription ID map.
      */
     unordered_map<string, int> getChannelToSubscriptionID() const;
 
     /**
      * @brief Gets the channel to events map.
-     * 
+     *
      * @return unordered_map<string, vector<Event>> The channel to events map.
      */
     unordered_map<string, vector<Event>> getChannelToEvents() const;
