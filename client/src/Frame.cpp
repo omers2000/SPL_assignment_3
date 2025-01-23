@@ -2,6 +2,33 @@
 
 Frame::Frame(const string &command) : command(command), headers(), body() {}
 
+Frame::~Frame() = default;
+
+Frame::Frame(const Frame &other) : command(other.command), headers(other.headers), body(other.body) {}
+
+Frame::Frame(Frame &&other) noexcept : command(std::move(other.command)), headers(std::move(other.headers)), body(std::move(other.body)) {}
+
+Frame &Frame::operator=(const Frame &other)
+{
+    if (this != &other)
+    {
+        command = other.command;
+        headers = other.headers;
+        body = other.body;
+    }
+    return *this;
+}
+
+Frame &Frame::operator=(Frame &&other) noexcept
+{
+    if (this != &other)
+    {
+        command = std::move(other.command);
+        headers = std::move(other.headers);
+        body = std::move(other.body);
+    }
+    return *this;
+}
 void Frame::addHeader(const string &key, const string &value)
 {
     headers[key] = value;
