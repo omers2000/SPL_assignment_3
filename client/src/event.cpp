@@ -80,7 +80,7 @@ Event::Event(const std::string &frame_body) : channel_name(""), city(""),
             string key = lineArgs.at(0);
             string val;
             if (lineArgs.size() == 2)
-{
+            {
                 val = lineArgs.at(1);
             }
             if (key == "user")

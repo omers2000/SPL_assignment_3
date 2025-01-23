@@ -72,6 +72,14 @@ public:
     void send(string &destination, string &body);
 
     /**
+     * @brief Receives events from the server.
+     *
+     * This function continuously listens for incoming frames from the server
+     * and processes them as events.
+     */
+    void receive();
+
+    /**
      * @brief Reports events from a specified file.
      *
      * @param filePath The path to the file containing events.
@@ -176,3 +184,4 @@ public:
      */
     unordered_map<string, vector<Event>> getChannelToEvents() const;
 };
+
