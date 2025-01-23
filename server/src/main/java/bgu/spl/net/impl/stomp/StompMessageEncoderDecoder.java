@@ -10,7 +10,7 @@ public class StompMessageEncoderDecoder implements MessageEncoderDecoder<Frame> 
     private byte[] bytes = new byte[1 << 10]; //start with 1k
     private int len = 0;
     private byte prevByte = -1;
-    private Frame result = new Frame();
+    private Frame result = null;
     private Section currentSection = Section.COMMAND;
     private String headerName = null;
     private String headerVal = null;
@@ -22,6 +22,7 @@ public class StompMessageEncoderDecoder implements MessageEncoderDecoder<Frame> 
     @Override
     public Frame decodeNextByte(byte nextByte) {
         if (nextByte == '\n' & currentSection == Section.COMMAND) {
+            this.result = new Frame();
             this.result.setCommand(popString());
             this.currentSection = Section.HEADERS;
         }
@@ -38,6 +39,7 @@ public class StompMessageEncoderDecoder implements MessageEncoderDecoder<Frame> 
         }
         else if (nextByte == '\u0000' & currentSection == Section.BODY) {
             this.result.setBody(popString());
+            this.currentSection = Section.COMMAND;
             return result;
         }
         else {
@@ -51,7 +53,7 @@ public class StompMessageEncoderDecoder implements MessageEncoderDecoder<Frame> 
 
     @Override
     public byte[] encode(Frame message) {
-        return frameString(message).getBytes();
+        return message.toString().toString().getBytes();
     }
 
     private void pushByte(byte nextByte) {
@@ -65,21 +67,6 @@ public class StompMessageEncoderDecoder implements MessageEncoderDecoder<Frame> 
     private String popString() {
         String result = new String(bytes, 0, len, StandardCharsets.UTF_8);
         len = 0;
-        bytes = new byte[1 << 10];
-        return result;
-    }
-
-    /**
-     * Convert a frame to a string
-     * @param frame the frame to convert
-     * @return the string representation of the frame
-     */
-    private String frameString(Frame frame) {
-        String result = frame.getCommand() + "\n";
-        for (String key : frame.getHeaders().keySet()) {
-            result += key + ":" + frame.getHeaders().get(key) + "\n";
-        }
-        result += "\n" + frame.getBody() + "\u0000";
         return result;
     }
 }
