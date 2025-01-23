@@ -4,21 +4,28 @@
 
 #include <unordered_map>
 #include <string>
-
+#include <condition_variable>
+#include <mutex>
 using namespace std;
 
 class StompClient
 {
 private:
     StompProtocol *stompProtocol_;
-    bool loggedIn_;
 
+    bool loggedIn_;
     string username_;
     string password_;
+
     int nextSubscriptionID_;
     int nextReceiptID_;
     unordered_map<string, int> channelToSubscriptionID_;
     unordered_map<string, vector<Event>> channelToEvents_;
+
+    mutable mutex responseLock_; // Synchronization lock
+    condition_variable_any responseCV_; // Condition variable
+    Frame lastResponse_;                // Stores last non-MESSAGE frame
+    bool lastResponseUpdated_;          // Flag to indicate if lastResponse_ is updated
 
 public:
     /**
@@ -75,8 +82,6 @@ public:
      */
     void send(string &destination, string &body);
 
-    
-
     /**
      * @brief Summarizes events for a specified channel and user, and writes the summary to an output file.
      *
@@ -93,6 +98,13 @@ public:
      * It should be run in a separate thread to avoid blocking the main execution flow.
      */
     void listen();
+
+    /**
+     * @brief Gets the last response(non-MESSAGE) frame received from the server.
+     *
+     * @return Frame The last response frame.
+     */
+    Frame getResponse();
 
     /**
      * @brief Gets the STOMP protocol.

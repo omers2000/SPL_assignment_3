@@ -119,6 +119,51 @@ void handleUserInput(StompClient &client)
 	}
 }
 
+void StompClient::listen()
+{
+	while (true)
+	{
+		Frame frame = stompProtocol_->receiveFrame();
+		if (frame.getCommand() == "MESSAGE")
+		{
+			string destination = frame.getHeader("destination");
+			if (channelToEvents_.find(destination) != channelToEvents_.end())
+			{
+				Event event = Event(frame.getBody());
+				channelToEvents_[destination].push_back(event);
+				cout << "Received event on channel " << destination << ": " << event.get_name() << endl;
+			}
+			else
+			{
+				cerr << "Received message for unknown channel " << destination << endl;
+			}
+		}
+		else
+		{
+			// Store last response (not a MESSAGE frame)
+			{
+				unique_lock<mutex> lock(responseLock_);
+				lastResponse_ = frame;
+				lastResponseUpdated_ = true;
+			}
+			responseCV_.notify_all(); // Wake up waiting threads
+		}
+	}
+}
+
+Frame StompClient::getResponse()
+{
+	unique_lock<mutex> lock(responseLock_);
+
+	// Wait until lastResponse_ is set (not empty)
+	responseCV_.wait(lock, [this]
+					 { return lastResponseUpdated_ == true; });
+
+	Frame response = lastResponse_; // Take the response
+	lastResponseUpdated_ = false;	// Reset after taking
+	return response;
+}
+
 StompClient::StompClient() : loggedIn_(false), nextSubscriptionID_(0), nextReceiptID_(0), stompProtocol_(new StompProtocol()) {}
 
 StompClient::~StompClient()
@@ -151,7 +196,7 @@ void StompClient::login(string &host, short port, string &username, string &pass
 	connectFrame.addHeader("passcode", password_);
 
 	stompProtocol_->sendFrame(connectFrame.toString());
-	Frame response = stompProtocol_->receiveFrame();
+	Frame response = getResponse();
 
 	if (response.getCommand() == "CONNECTED")
 	{
@@ -178,7 +223,7 @@ void StompClient::logout()
 	disconnectFrame.addHeader("receipt", username_ + "-" + to_string(nextReceiptID_));
 
 	stompProtocol_->sendFrame(disconnectFrame.toString());
-	Frame response = stompProtocol_->receiveFrame();
+	Frame response = getResponse();
 
 	if (response.getCommand() == "RECEIPT")
 	{
@@ -205,7 +250,7 @@ void StompClient::join(string &destination)
 	subscribeFrame.addHeader("id", to_string(nextSubscriptionID_));
 
 	stompProtocol_->sendFrame(subscribeFrame.toString());
-	Frame response = stompProtocol_->receiveFrame();
+	Frame response = getResponse();
 
 	if (response.getCommand() == "ERROR")
 	{
@@ -230,7 +275,7 @@ void StompClient::exit(string &destination)
 	unsubscribeFrame.addHeader("id", to_string(channelToSubscriptionID_[destination]));
 
 	stompProtocol_->sendFrame(unsubscribeFrame.toString());
-	Frame response = stompProtocol_->receiveFrame();
+	Frame response = getResponse();
 
 	if (response.getCommand() == "ERROR")
 	{
@@ -260,6 +305,22 @@ void StompClient::report(string &filePath)
 	{
 		// todo: handle error properly
 		cerr << "Couldn't read file: " << e.what() << endl;
+	}
+}
+
+void StompClient::send(string &destination, string &body)
+{
+	Frame frameToSend("SEND");
+	frameToSend.addHeader("destination", destination);
+	frameToSend.setBody(body);
+
+	// TODO: deal with the case where the user is not subscribed to the channel
+	stompProtocol_->sendFrame(frameToSend.toString());
+	Frame response = getResponse();
+
+	if (response.getCommand() == "ERROR")
+	{
+		// todo: handle error
 	}
 }
 
@@ -327,6 +388,7 @@ void StompClient::summarize(string &channelName, string &user, string &outputFil
 	{
 		outFile << "Report_" << reportNumber++ << ":\n";
 		outFile << "city: " << event.get_city() << "\n";
+		// todo: convert datetime to proper format
 		outFile << "date time: " << event.get_date_time() << "\n";
 		outFile << "event name: " << event.get_name() << "\n";
 		outFile << "summary: " << event.get_description() << "\n";
@@ -334,48 +396,6 @@ void StompClient::summarize(string &channelName, string &user, string &outputFil
 	}
 
 	outFile.close();
-}
-
-void StompClient::send(string &destination, string &body)
-{
-	Frame frameToSend("SEND");
-	frameToSend.addHeader("destination", destination);
-	frameToSend.setBody(body);
-
-	// TODO: deal with the case where the user is not subscribed to the channel
-	stompProtocol_->sendFrame(frameToSend.toString());
-	Frame response = stompProtocol_->receiveFrame();
-
-	if (response.getCommand() == "ERROR")
-	{
-		// todo: handle error
-	}
-}
-
-void StompClient::listen()
-{
-	while (true)
-	{
-		Frame frame = stompProtocol_->receiveFrame();
-		if (frame.getCommand() == "MESSAGE")
-		{
-			string destination = frame.getHeader("destination");
-			if (channelToEvents_.find(destination) != channelToEvents_.end())
-			{
-				Event event = Event(frame.getBody());
-				channelToEvents_[destination].push_back(event);
-				cout << "Received event on channel " << destination << ": " << event.get_name() << endl;
-			}
-			else
-			{
-				cerr << "Received message for unknown channel " << destination << endl;
-			}
-		}
-		else if (frame.getCommand() == "ERROR")
-		{
-			cerr << "Received error frame: " << frame.getBody() << endl;
-		}
-	}
 }
 
 // Function to split a string by a delimiter

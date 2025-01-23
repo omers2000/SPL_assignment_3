@@ -1,9 +1,15 @@
 #include "StompProtocol.h"
 
-StompProtocol::StompProtocol() {}
+StompProtocol::StompProtocol() : connectionHandler_(nullptr), host_(""), port_(0) {}
 
 StompProtocol::~StompProtocol()
 {
+    if (connectionHandler_ != nullptr)
+    {
+        connectionHandler_->close();
+        delete connectionHandler_;
+        connectionHandler_ = nullptr;
+    }
 }
 
 bool StompProtocol::connect(string &host, short port, string &username, string &password)
