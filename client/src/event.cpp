@@ -1,5 +1,6 @@
 #include "../include/event.h"
 #include "../include/json.hpp"
+#include "../include/clientUtils.h"
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -7,6 +8,7 @@
 #include <vector>
 #include <sstream>
 #include <cstring>
+
 
 using namespace std;
 using json = nlohmann::json;
@@ -76,7 +78,7 @@ Event::Event(const std::string &frame_body) : channel_name(""), city(""),
         vector<string> lineArgs;
         if (line.find(':') != string::npos)
         {
-            split_str(line, ':', lineArgs);
+            ClientUtils::split_str(line, ':', lineArgs);
             string key = lineArgs.at(0);
             string val;
             if (lineArgs.size() == 2)
@@ -170,15 +172,4 @@ names_and_events parseEventsFile(std::string json_path)
     names_and_events events_and_names{channel_name, events};
 
     return events_and_names;
-}
-
-// Function to split a string by a delimiter
-void split_str(const std::string &s, char delimiter, std::vector<std::string> &tokens)
-{
-    std::string token;
-    std::istringstream tokenStream(s);
-    while (std::getline(tokenStream, token, delimiter))
-    {
-        tokens.push_back(token);
-    }
 }

@@ -1,3 +1,4 @@
+#pragma once
 #include "StompProtocol.h"
 #include "event.h"
 #include "Frame.h"
@@ -22,7 +23,7 @@ private:
     unordered_map<string, int> channelToSubscriptionID_;
     unordered_map<string, vector<Event>> channelToEvents_;
 
-    mutable mutex responseLock_; // Synchronization lock
+    mutable mutex responseLock_;        // Synchronization lock
     condition_variable_any responseCV_; // Condition variable
     Frame lastResponse_;                // Stores last non-MESSAGE frame
     bool lastResponseUpdated_;          // Flag to indicate if lastResponse_ is updated

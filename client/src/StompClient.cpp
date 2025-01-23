@@ -1,18 +1,7 @@
 #include "../include/StompClient.h"
+#include "../include/clientUtils.h"
 #include <fstream>
 #include "StompClient.h"
-
-// Stomp client implementation:
-int main(int argc, char *argv[])
-{
-	StompClient client;
-
-	std::thread userInputThread(handleUserInput, ref(client));
-	std::thread receiveThread(&StompClient::listen, &client);
-	// todo: implement synchonization
-	userInputThread.join();
-	receiveThread.join();
-}
 
 // todo: consider turning this into a non-static class method
 void handleUserInput(StompClient &client)
@@ -22,8 +11,8 @@ void handleUserInput(StompClient &client)
 	while (true)
 	{
 		cout << "Enter command and arguments (send, subscribe, unsubscribe, report, summarize, disconnect, exit): ";
-		cin >> command;
-		split_str(command, ' ', commandArgs);
+		getline(cin, command);
+		ClientUtils::split_str(command, ' ', commandArgs);
 
 		if (commandArgs[0] == "login")
 		{
@@ -33,6 +22,7 @@ void handleUserInput(StompClient &client)
 			}
 			else
 			{
+				// todo: validate that the splitting actually works
 				string hostPortString = commandArgs[1];
 				size_t colonPos = hostPortString.find(':');
 				if (colonPos == string::npos)
@@ -121,7 +111,8 @@ void handleUserInput(StompClient &client)
 
 void StompClient::listen()
 {
-	while (true)
+	// todo: use a condition variable to wake up the thread when logged in to prevent busy waiting
+	while (loggedIn_)
 	{
 		Frame frame = stompProtocol_->receiveFrame();
 		if (frame.getCommand() == "MESSAGE")
@@ -164,7 +155,8 @@ Frame StompClient::getResponse()
 	return response;
 }
 
-StompClient::StompClient() : loggedIn_(false), nextSubscriptionID_(0), nextReceiptID_(0), stompProtocol_(new StompProtocol()) {}
+StompClient::StompClient() : loggedIn_(false), nextSubscriptionID_(0), nextReceiptID_(0), stompProtocol_(new StompProtocol()),
+							 lastResponse_("EMPTY"), lastResponseUpdated_(false) {}
 
 StompClient::~StompClient()
 {
@@ -389,24 +381,13 @@ void StompClient::summarize(string &channelName, string &user, string &outputFil
 		outFile << "Report_" << reportNumber++ << ":\n";
 		outFile << "city: " << event.get_city() << "\n";
 		// todo: convert datetime to proper format
-		outFile << "date time: " << event.get_date_time() << "\n";
+		outFile << "date time: " << ClientUtils::epochToDateTimeString(event.get_date_time()) << "\n";
 		outFile << "event name: " << event.get_name() << "\n";
 		outFile << "summary: " << event.get_description() << "\n";
 		outFile << "\n";
 	}
 
 	outFile.close();
-}
-
-// Function to split a string by a delimiter
-void split_str(const std::string &s, char delimiter, std::vector<std::string> &tokens)
-{
-	std::string token;
-	std::istringstream tokenStream(s);
-	while (std::getline(tokenStream, token, delimiter))
-	{
-		tokens.push_back(token);
-	}
 }
 
 bool StompClient::isLoggedIn() const
@@ -432,4 +413,18 @@ int StompClient::getNextSubscriptionID() const
 int StompClient::getNextReceiptID() const
 {
 	return nextReceiptID_;
+}
+
+// Stomp client implementation:
+int main(int argc, char *argv[])
+{
+	StompClient client;
+
+	std::thread userInputThread(handleUserInput, ref(client));
+	cout << "User input thread started" << endl;
+	std::thread receiveThread(&StompClient::listen, &client);
+	cout << "Listener thread started" << endl;
+	// todo: implement synchonization
+	userInputThread.join();
+	receiveThread.join();
 }
