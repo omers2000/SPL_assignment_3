@@ -132,3 +132,4 @@ public:
      */
     unordered_map<string, vector<Event>> getChannelToEvents() const;
 };
+

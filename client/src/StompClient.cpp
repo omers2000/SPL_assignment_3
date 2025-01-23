@@ -1,10 +1,23 @@
 #include "../include/StompClient.h"
 #include <fstream>
+#include "StompClient.h"
 
 // Stomp client implementation:
 int main(int argc, char *argv[])
 {
 	StompClient client;
+
+	std::thread userInputThread(handleUserInput, std::ref(client));
+	std::thread receiveThread(&StompClient::receive, &client);
+	//todo: implement synchonization
+	userInputThread.join();
+	receiveThread.join();
+	
+}
+
+//todo: consider turning this into a non-static class method
+void handleUserInput(StompClient &client)
+{
 	string command;
 	vector<string> commandArgs;
 	while (true)
@@ -104,7 +117,32 @@ int main(int argc, char *argv[])
 		}
 
 		commandArgs.clear();
-		return 0;
+	}
+}
+
+void StompClient::receive()
+{
+	while (true)
+	{
+		Frame frame = receiveFrame();
+		if (frame.getCommand() == "MESSAGE")
+		{
+			string destination = frame.getHeader("destination");
+			if (channelToEvents_.find(destination) != channelToEvents_.end())
+			{
+				Event event = Event(frame.getBody());
+				channelToEvents_[destination].push_back(event);
+				cout << "Received event on channel " << destination << ": " << event.get_name() << endl;
+			}
+			else
+			{
+				cerr << "Received message for unknown channel " << destination << endl;
+			}
+		}
+		else if (frame.getCommand() == "ERROR")
+		{
+			cerr << "Received error frame: " << frame.getBody() << endl;
+		}
 	}
 }
 
