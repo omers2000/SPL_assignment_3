@@ -42,6 +42,11 @@ public:
     void login(string &host, short port, string &username, string &password);
 
     /**
+     * @brief Disconnects from the STOMP server.
+     */
+    void logout();
+
+    /**
      * @brief Subscribes to a specified destination.
      *
      * @param destination The destination to subscribe to.
@@ -63,9 +68,14 @@ public:
     void report(string &filePath);
 
     /**
-     * @brief Disconnects from the STOMP server.
+     * @brief Sends a message to a specified destination.
+     *
+     * @param destination The destination to send the message to.
+     * @param body The body of the message.
      */
-    void logout();
+    void send(string &destination, string &body);
+
+    
 
     /**
      * @brief Summarizes events for a specified channel and user, and writes the summary to an output file.
@@ -75,6 +85,14 @@ public:
      * @param outputFile The file to write the summary to.
      */
     void summarize(string &channelName, string &user, string &outputFile);
+
+    /**
+     * @brief Listens for incoming messages from the server.
+     *
+     * This function continuously listens for messages from the server and processes them accordingly.
+     * It should be run in a separate thread to avoid blocking the main execution flow.
+     */
+    void listen();
 
     /**
      * @brief Gets the STOMP protocol.
@@ -132,4 +150,3 @@ public:
      */
     unordered_map<string, vector<Event>> getChannelToEvents() const;
 };
-
