@@ -2,7 +2,6 @@
 #include "../include/clientUtils.h"
 #include <fstream>
 
-// todo: consider turning this into a non-static class method
 void handleUserInput(StompClient &client)
 {
 	cout << "User input thread started" << endl;
@@ -22,7 +21,6 @@ void handleUserInput(StompClient &client)
 			}
 			else
 			{
-				// todo: validate that the splitting actually works
 				string hostPortString = commandArgs[1];
 				size_t colonPos = hostPortString.find(':');
 				if (colonPos == string::npos)
@@ -201,6 +199,7 @@ void StompClient::login(string &host, short port, string &username, string &pass
 	}
 	else if (response.getCommand() == "ERROR")
 	{
+		stompProtocol_.disconnect();
 		cout << "Login failed" << endl;
 		cout << response.getBody() << endl;
 	}
@@ -240,7 +239,6 @@ void StompClient::join(string &destination)
 		return;
 	}
 
-	// todo: add slash to destination?6
 	Frame subscribeFrame("SUBSCRIBE");
 	subscribeFrame.addHeader("destination", destination);
 	subscribeFrame.addHeader("id", to_string(nextSubscriptionID_));
@@ -384,7 +382,6 @@ void StompClient::summarize(string &channelName, string &user, string &outputFil
 	{
 		outFile << "Report_" << reportNumber++ << ":\n";
 		outFile << "city: " << event.get_city() << "\n";
-		// todo: convert datetime to proper format
 		outFile << "date time: " << ClientUtils::epochToDateTimeString(event.get_date_time()) << "\n";
 		outFile << "event name: " << event.get_name() << "\n";
 		outFile << "summary: " << event.get_description() << "\n";
