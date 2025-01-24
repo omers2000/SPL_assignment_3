@@ -91,7 +91,7 @@ string Frame::toString() const
     string result = command + "\n";
     for (const auto &header : headers)
     {
-        result += header.first + ": " + header.second + "\n";
+        result += header.first + ":" + header.second + "\n";
     }
     if (!body.empty())
     {

@@ -45,7 +45,8 @@ void StompProtocol::sendFrame(const string &frame)
 }
 
 Frame StompProtocol::receiveFrame()
-{
+{   
+    
     string frameString;
     connectionHandler_.getFrameAscii(frameString, '\0');
     return Frame::parseFrame(frameString);

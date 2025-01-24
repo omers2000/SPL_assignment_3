@@ -10,13 +10,13 @@ void handleUserInput(StompClient &client)
 	vector<string> commandArgs;
 	while (true)
 	{
-		cout << "Enter command and arguments (send, subscribe, unsubscribe, report, summarize, disconnect, exit): ";
+		cout << "Enter command and arguments (login, join, exit, report, summarize, logout):" << endl;
 		getline(cin, command);
 		ClientUtils::split_str(command, ' ', commandArgs);
 
 		if (commandArgs[0] == "login")
 		{
-			if (commandArgs.size() < 5)
+			if (commandArgs.size() < 4)
 			{
 				cout << "Usage: login <host> <port> <username> <password>" << endl;
 			}
@@ -38,7 +38,7 @@ void handleUserInput(StompClient &client)
 				client.login(host, port, username, password);
 			}
 		}
-		if (client.isLoggedIn() == false)
+		else if (client.isLoggedIn() == false)
 		{
 			cout << "You must login first" << endl;
 			continue;
@@ -112,33 +112,37 @@ void handleUserInput(StompClient &client)
 void StompClient::listen()
 {
 	cout << "Listener thread started" << endl;
-	// todo: use a condition variable to wake up the thread when logged in to prevent busy waiting
-	while (loggedIn_)
+
+	while (true)
 	{
-		Frame frame = stompProtocol_.receiveFrame();
-		if (frame.getCommand() == "MESSAGE")
+		// todo: use a condition variable to wake up the thread when logged in to prevent busy waiting
+		if (loggedIn_)
 		{
-			string destination = frame.getHeader("destination");
-			if (channelToEvents_.find(destination) != channelToEvents_.end())
+			Frame frame = stompProtocol_.receiveFrame();
+			if (frame.getCommand() == "MESSAGE")
 			{
-				Event event = Event(frame.getBody());
-				channelToEvents_[destination].push_back(event);
-				cout << "Received event on channel " << destination << ": " << event.get_name() << endl;
+				string destination = frame.getHeader("destination");
+				if (channelToEvents_.find(destination) != channelToEvents_.end())
+				{
+					Event event = Event(frame.getBody());
+					channelToEvents_[destination].push_back(event);
+					cout << "Received event on channel " << destination << ": " << event.get_name() << endl;
+				}
+				else
+				{
+					cerr << "Received message for unknown channel " << destination << endl;
+				}
 			}
 			else
 			{
-				cerr << "Received message for unknown channel " << destination << endl;
+				// Store last response (not a MESSAGE frame)
+				{
+					unique_lock<mutex> lock(responseLock_);
+					lastResponse_ = frame;
+					lastResponseUpdated_ = true;
+				}
+				responseCV_.notify_all(); // Wake up waiting threads
 			}
-		}
-		else
-		{
-			// Store last response (not a MESSAGE frame)
-			{
-				unique_lock<mutex> lock(responseLock_);
-				lastResponse_ = frame;
-				lastResponseUpdated_ = true;
-			}
-			responseCV_.notify_all(); // Wake up waiting threads
 		}
 	}
 }
@@ -173,7 +177,7 @@ void StompClient::login(string &host, short port, string &username, string &pass
 		return;
 	}
 
-	if (stompProtocol_.connect(host, port, username, password))
+	if (!stompProtocol_.connect(host, port, username, password))
 	{
 		cerr << "Could not connect to server" << endl;
 		return;
@@ -181,12 +185,12 @@ void StompClient::login(string &host, short port, string &username, string &pass
 
 	Frame connectFrame("CONNECT");
 	connectFrame.addHeader("accept-version", "1.2");
-	connectFrame.addHeader("host", host);
-	connectFrame.addHeader("login", username_);
-	connectFrame.addHeader("passcode", password_);
+	connectFrame.addHeader("host", "stomp.cs.bgu.ac.il");
+	connectFrame.addHeader("login", username);
+	connectFrame.addHeader("passcode", password);
 
 	stompProtocol_.sendFrame(connectFrame.toString());
-	Frame response = getResponse();
+	Frame response = stompProtocol_.receiveFrame();
 
 	if (response.getCommand() == "CONNECTED")
 	{
@@ -197,7 +201,8 @@ void StompClient::login(string &host, short port, string &username, string &pass
 	}
 	else if (response.getCommand() == "ERROR")
 	{
-		// todo: handle error
+		cout << "Login failed" << endl;
+		cout << response.getBody() << endl;
 	}
 }
 
@@ -235,6 +240,7 @@ void StompClient::join(string &destination)
 		return;
 	}
 
+	// todo: add slash to destination?6
 	Frame subscribeFrame("SUBSCRIBE");
 	subscribeFrame.addHeader("destination", destination);
 	subscribeFrame.addHeader("id", to_string(nextSubscriptionID_));
@@ -419,9 +425,7 @@ int main(int argc, char *argv[])
 	StompClient client;
 
 	std::thread userInputThread(handleUserInput, ref(client));
-	/* std::thread receiveThread(&StompClient::listen, &client);
-
-	// todo: implement synchonization
+	std::thread receiveThread(&StompClient::listen, &client);
 	userInputThread.join();
-	receiveThread.join(); */
+	receiveThread.join();
 }

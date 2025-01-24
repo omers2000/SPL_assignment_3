@@ -61,7 +61,18 @@
         "utility": "cpp",
         "valarray": "cpp",
         "variant": "cpp",
-        "stompclient": "cpp"
+        "stompclient": "cpp",
+        "*.ipp": "cpp",
+        "compare": "cpp",
+        "concepts": "cpp",
+        "algorithm": "cpp",
+        "iterator": "cpp",
+        "memory_resource": "cpp",
+        "random": "cpp",
+        "ranges": "cpp",
+        "shared_mutex": "cpp",
+        "stop_token": "cpp",
+        "cinttypes": "cpp"
     },
     "makefile.makefilePath": "client/"
 }
