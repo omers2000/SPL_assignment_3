@@ -140,4 +140,8 @@ public class Reactor<T> implements Server<T> {
         selector.close();
     }
 
+    public ActorThreadPool getPool() {
+        return pool;
+    }
+
 }
