@@ -51,4 +51,13 @@ public class Frame {
     public void addHeader(String key, String value) {
         headers.put(key, value);
     }
+
+    public String toString() {
+        String result = this.getCommand() + "\n";
+        for (String key : this.getHeaders().keySet()) {
+            result += key + ":" + this.getHeaders().get(key) + "\n";
+        }
+        result += "\n" + this.getBody() + "\u0000";
+        return result;
+    }
 }
