@@ -64,19 +64,20 @@ public class StompServerProtocol implements StompMessagingProtocol<Frame> {
 
     private void handleConnect(Frame message) {
         if (validateConnectFrame(message)) {
-            User<Frame> user = new User<Frame>(message.getKeyByHeader("login"), message.getKeyByHeader("passcode"));
-            this.username = user.getUsername();
+            User<Frame> messageUser = new User<Frame>(message.getKeyByHeader("login"), message.getKeyByHeader("passcode"));
+            this.username = messageUser.getUsername();
             if (connections.getUser(username) == null) {
-                connections.addUser(username, user);
+                connections.addUser(username, messageUser);
             }
-            if (connections.getUser(username).getPassword() != user.getPassword()){
+            User<Frame> regUser = connections.getUser(username);
+            if (!regUser.getPassword().equals(messageUser.getPassword())){
                 sendError(message, "Wrong passcode", "You entered the wrong passcode for the user '" + username + "'. Please check the passcode and try again.");
             }
-            else if (connections.getUser(username).isLoggedIn()){
-                sendError(message, "User already connected", "The user '" + username + "' is already connected. Please disconnect the current session before connecting again.");
+            else if (regUser.isLoggedIn()){
+                sendError(message, "User already connected", "The user '" + username + "' is already connected. Please disconnect the other session before connecting again.");
             }
             else {
-                user.login();
+                regUser.login();
                 sendConnected(message);
             }
         }
