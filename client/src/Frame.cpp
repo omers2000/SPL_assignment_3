@@ -60,7 +60,7 @@ Frame Frame::parseFrame(const string &frameString)
     vector<string> lines = splitIntoLines(frameString);
 
     Frame frame(lines[0]);
-    for (int i = 1; i < lines.size() - 1; i++)
+    for (size_t i = 1; i < lines.size() - 1; i++)
     {
         int colonPos = lines[i].find(':');
         string key = lines[i].substr(0, colonPos);

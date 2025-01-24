@@ -12,7 +12,7 @@ using namespace std;
 class StompClient
 {
 private:
-    StompProtocol *stompProtocol_;
+    StompProtocol stompProtocol_;
 
     bool loggedIn_;
     string username_;

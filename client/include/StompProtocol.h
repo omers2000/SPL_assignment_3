@@ -8,9 +8,10 @@ using namespace std;
 class StompProtocol
 {
 private:
-    ConnectionHandler *connectionHandler_;
+    ConnectionHandler connectionHandler_;
     string host_;
     short port_;
+    bool connected;
 
 public:
     /**
@@ -59,13 +60,6 @@ public:
     Frame receiveFrame();
 
     /**
-     * @brief Gets the connection handler.
-     *
-     * @return ConnectionHandler* The connection handler.
-     */
-    ConnectionHandler *getConnectionHandler() const;
-
-    /**
      * @brief Gets the host.
      *
      * @return string The host.
@@ -78,4 +72,11 @@ public:
      * @return short The port.
      */
     short getPort() const;
+
+    /**
+     * @brief Checks if the client is connected.
+     *
+     * @return bool True if connected, false otherwise.
+     */
+    bool isConnected() const;
 };

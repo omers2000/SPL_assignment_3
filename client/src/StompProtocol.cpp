@@ -1,58 +1,53 @@
 #include "StompProtocol.h"
 
-StompProtocol::StompProtocol() : connectionHandler_(nullptr), host_(""), port_(0) {}
+StompProtocol::StompProtocol() : connectionHandler_("", 0), host_(""), port_(0), connected(false) {}
 
 StompProtocol::~StompProtocol()
 {
-    if (connectionHandler_ != nullptr)
+    if (connected)
     {
-        connectionHandler_->close();
-        delete connectionHandler_;
-        connectionHandler_ = nullptr;
+        connectionHandler_.close();
     }
 }
 
 bool StompProtocol::connect(string &host, short port, string &username, string &password)
 {
+    connectionHandler_.setHost(host);
+    connectionHandler_.setPort(port);
 
-    // todo: this may be unnecessary
-    if (connectionHandler_ != nullptr)
+    if (!connectionHandler_.connect())
     {
-        delete connectionHandler_;
-    }
-    connectionHandler_ = new ConnectionHandler(host, port);
-
-    if (!connectionHandler_->connect())
-    {
-        delete connectionHandler_;
-        connectionHandler_ = nullptr;
+        connectionHandler_.setHost("");
+        connectionHandler_.setPort(0);
         return false;
     }
 
     host_ = host;
     port_ = port;
+    connected = true;
     return true;
 }
 
 void StompProtocol::disconnect()
 {
-    if (connectionHandler_ != nullptr)
+    if (connected)
     {
-        connectionHandler_->close();
-        delete connectionHandler_;
-        connectionHandler_ = nullptr;
+        connectionHandler_.close();
+        connectionHandler_.setHost("");
+        connectionHandler_.setPort(0);
+        connected = false;
     }
 }
 
 void StompProtocol::sendFrame(const string &frame)
 {
-    connectionHandler_->sendFrameAscii(frame, '\0');
+    connectionHandler_.sendFrameAscii(frame, '\0');
 }
 
 Frame StompProtocol::receiveFrame()
 {
     string frameString;
-    connectionHandler_->getFrameAscii(frameString, '\0');
+    connectionHandler_.getFrameAscii(frameString, '\0');
     return Frame::parseFrame(frameString);
 }
 
@@ -66,7 +61,7 @@ short StompProtocol::getPort() const
     return port_;
 }
 
-ConnectionHandler *StompProtocol::getConnectionHandler() const
+bool StompProtocol::isConnected() const
 {
-    return connectionHandler_;
+    return connected;
 }

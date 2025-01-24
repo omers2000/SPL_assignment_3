@@ -2,10 +2,10 @@ CFLAGS:=-c -Wall -Weffc++ -g -std=c++11 -Iinclude
 LDFLAGS:=-lboost_system -lpthread
 all: StompEMIClient
 
-EchoClient: bin/ConnectionHandler.o bin/echoClient.o
+EchoClient: .PHONY bin/ConnectionHandler.o bin/echoClient.o
 	g++ -o bin/EchoClient bin/ConnectionHandler.o bin/echoClient.o $(LDFLAGS)
 
-StompEMIClient: bin/ConnectionHandler.o bin/StompClient.o bin/event.o bin/Frame.o bin/ClientUtils.o bin/StompProtocol.o
+StompEMIClient: .PHONY bin/ConnectionHandler.o bin/StompClient.o bin/event.o bin/Frame.o bin/ClientUtils.o bin/StompProtocol.o
 	g++ -o bin/StompEMIClient bin/ConnectionHandler.o bin/StompClient.o bin/event.o bin/Frame.o bin/StompProtocol.o  bin/ClientUtils.o $(LDFLAGS)
 
 bin/ConnectionHandler.o: 
