@@ -34,7 +34,6 @@ public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler
                 T nextMessage = encdec.decodeNextByte((byte) read);
                 if (nextMessage != null) {
                     protocol.process(nextMessage);
-                    System.out.println("message received");
                 }
             }
 
@@ -66,5 +65,10 @@ public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler
     @Override
     public MessagingProtocol<T> getProtocol() {
         return protocol;
+    }
+
+    @Override
+    public void addTask(Runnable task){
+        task.run();
     }
 }
