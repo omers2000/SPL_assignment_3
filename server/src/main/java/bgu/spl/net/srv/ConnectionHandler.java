@@ -23,4 +23,10 @@ public interface ConnectionHandler<T> extends Closeable {
 
     MessagingProtocol<T> getProtocol();
 
+    /**
+     * add a task directly to the tasks list
+     * @param task the task to add
+     */
+    void addTask(Runnable task);
+
 }
