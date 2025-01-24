@@ -95,7 +95,6 @@ void handleUserInput(StompClient &client)
 		else if (commandArgs[0] == "logout")
 		{
 			client.logout();
-			break;
 		}
 
 		else
@@ -217,11 +216,12 @@ void StompClient::logout()
 	disconnectFrame.addHeader("receipt", username_ + "-" + to_string(nextReceiptID_));
 
 	stompProtocol_.sendFrame(disconnectFrame.toString());
-	Frame response = getResponse();
+	Frame response = stompProtocol_.receiveFrame();
 
 	if (response.getCommand() == "RECEIPT")
 	{
 		cout << "Disconnected from server" << endl;
+		loggedIn_ = false;
 		stompProtocol_.disconnect();
 		nextReceiptID_++;
 	}
@@ -244,7 +244,7 @@ void StompClient::join(string &destination)
 	subscribeFrame.addHeader("id", to_string(nextSubscriptionID_));
 
 	stompProtocol_.sendFrame(subscribeFrame.toString());
-	Frame response = getResponse();
+	Frame response = stompProtocol_.receiveFrame();
 
 	if (response.getCommand() == "ERROR")
 	{
@@ -269,7 +269,7 @@ void StompClient::exit(string &destination)
 	unsubscribeFrame.addHeader("id", to_string(channelToSubscriptionID_[destination]));
 
 	stompProtocol_.sendFrame(unsubscribeFrame.toString());
-	Frame response = getResponse();
+	Frame response = stompProtocol_.receiveFrame();
 
 	if (response.getCommand() == "ERROR")
 	{
@@ -310,7 +310,8 @@ void StompClient::send(string &destination, string &body)
 
 	// TODO: deal with the case where the user is not subscribed to the channel
 	stompProtocol_.sendFrame(frameToSend.toString());
-	Frame response = getResponse();
+	Frame response = stompProtocol_.receiveFrame();
+	;
 
 	if (response.getCommand() == "ERROR")
 	{
@@ -336,12 +337,6 @@ void StompClient::summarize(string &channelName, string &user, string &outputFil
 		{
 			userEvents.push_back(event);
 		}
-	}
-
-	if (userEvents.empty())
-	{
-		cerr << "No events found for user " << user << " in channel " << channelName << "." << endl;
-		return;
 	}
 
 	// Aggregate event information
@@ -421,8 +416,7 @@ int main(int argc, char *argv[])
 {
 	StompClient client;
 
-	std::thread userInputThread(handleUserInput, ref(client));
-	std::thread receiveThread(&StompClient::listen, &client);
-	userInputThread.join();
-	receiveThread.join();
+	// std::thread receiveThread(&StompClient::listen, &client);
+	handleUserInput(client);
+	// receiveThread.join();
 }

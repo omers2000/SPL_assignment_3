@@ -95,8 +95,8 @@ string Frame::toString() const
     }
     if (!body.empty())
     {
-        result += "\n" + body + "\n";
+        result += "\n" + body;
     }
-    result += '\0';
+    // result +=  "\n" +'\0';
     return result;
 }
