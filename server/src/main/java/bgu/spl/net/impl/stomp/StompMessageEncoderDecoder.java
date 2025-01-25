@@ -53,7 +53,7 @@ public class StompMessageEncoderDecoder implements MessageEncoderDecoder<Frame> 
 
     @Override
     public byte[] encode(Frame message) {
-        return message.toString().toString().getBytes();
+        return message.toString().getBytes();
     }
 
     private void pushByte(byte nextByte) {
