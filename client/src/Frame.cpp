@@ -29,6 +29,7 @@ Frame &Frame::operator=(Frame &&other) noexcept
     }
     return *this;
 }
+
 void Frame::addHeader(const string &key, const string &value)
 {
     headers[key] = value;
@@ -93,10 +94,10 @@ string Frame::toString() const
     {
         result += header.first + ":" + header.second + "\n";
     }
+    result += "\n";
     if (!body.empty())
     {
-        result += "\n" + body;
+        result += body + "\n";
     }
-    // result +=  "\n" +'\0';
     return result;
 }

@@ -1,6 +1,7 @@
 #include "../include/StompClient.h"
 #include "../include/clientUtils.h"
 #include <fstream>
+#include "StompClient.h"
 
 void handleUserInput(StompClient &client)
 {
@@ -213,7 +214,7 @@ void StompClient::logout()
 	}
 
 	Frame disconnectFrame("DISCONNECT");
-	disconnectFrame.addHeader("receipt", username_ + "-" + to_string(nextReceiptID_));
+	disconnectFrame.addHeader("receipt", generateNextReceiptID());
 
 	stompProtocol_.sendFrame(disconnectFrame.toString());
 	Frame response = stompProtocol_.receiveFrame();
@@ -223,7 +224,6 @@ void StompClient::logout()
 		cout << "Disconnected from server" << endl;
 		loggedIn_ = false;
 		stompProtocol_.disconnect();
-		nextReceiptID_++;
 	}
 	else if (response.getCommand() == "ERROR")
 	{
@@ -241,20 +241,23 @@ void StompClient::join(string &destination)
 
 	Frame subscribeFrame("SUBSCRIBE");
 	subscribeFrame.addHeader("destination", destination);
-	subscribeFrame.addHeader("id", to_string(nextSubscriptionID_));
+	subscribeFrame.addHeader("id", generateNextSubscriptionID());
+	subscribeFrame.addHeader("receipt", generateNextReceiptID());
 
 	stompProtocol_.sendFrame(subscribeFrame.toString());
 	Frame response = stompProtocol_.receiveFrame();
 
-	if (response.getCommand() == "ERROR")
+	if (response.getCommand() == "RECEIPT")
+	{
+		cout << "Joined Channel " << destination << endl;
+		channelToSubscriptionID_[destination] = nextSubscriptionID_;
+		channelToEvents_[destination] = vector<Event>();
+	}
+
+	else if (response.getCommand() == "ERROR")
 	{
 		// todo: handle error types: User is already subscribed to this channel, etc.
 	}
-
-	cout << "Joined Channel " << destination << endl;
-	channelToSubscriptionID_[destination] = nextSubscriptionID_;
-	nextSubscriptionID_++;
-	channelToEvents_[destination] = vector<Event>();
 }
 
 void StompClient::exit(string &destination)
@@ -267,19 +270,22 @@ void StompClient::exit(string &destination)
 
 	Frame unsubscribeFrame("UNSUBSCRIBE");
 	unsubscribeFrame.addHeader("id", to_string(channelToSubscriptionID_[destination]));
+	unsubscribeFrame.addHeader("receipt", generateNextReceiptID());
 
 	stompProtocol_.sendFrame(unsubscribeFrame.toString());
 	Frame response = stompProtocol_.receiveFrame();
 
-	if (response.getCommand() == "ERROR")
+	if (response.getCommand() == "RECEIPT")
+	{
+		cout << "Exited Channel " << destination << endl;
+		// todo: decide whether to delete the channel from the maps or not
+		channelToSubscriptionID_.erase(destination);
+		channelToEvents_.erase(destination);
+	}
+	else if (response.getCommand() == "ERROR")
 	{
 		// todo: handle error
 	}
-
-	cout << "Exited Channel " << destination << endl;
-	// todo: decide whether to delete the channel from the maps or not
-	channelToSubscriptionID_.erase(destination);
-	channelToEvents_.erase(destination);
 }
 
 void StompClient::report(string &filePath)
@@ -289,9 +295,9 @@ void StompClient::report(string &filePath)
 		names_and_events names_and_events = parseEventsFile(filePath);
 		for (Event event : names_and_events.events)
 		{
+			event.setEventOwnerUser(username_);
 			string eventString = event.toString();
 			send(names_and_events.channel_name, eventString);
-			// todo: check if the event was sent successfully
 			channelToEvents_[names_and_events.channel_name].push_back(event);
 		}
 	}
@@ -306,14 +312,19 @@ void StompClient::send(string &destination, string &body)
 {
 	Frame frameToSend("SEND");
 	frameToSend.addHeader("destination", destination);
+	frameToSend.addHeader("receipt", generateNextReceiptID());
 	frameToSend.setBody(body);
 
 	// TODO: deal with the case where the user is not subscribed to the channel
 	stompProtocol_.sendFrame(frameToSend.toString());
 	Frame response = stompProtocol_.receiveFrame();
-	;
-
-	if (response.getCommand() == "ERROR")
+	cout << "Response: " << response.toString() << endl;
+	
+	if (response.getCommand() == "RECEIPT")
+	{
+		cout << "Message sent successfully" << endl;
+	}
+	else if (response.getCommand() == "ERROR")
 	{
 		// todo: handle error
 	}
@@ -406,9 +417,23 @@ int StompClient::getNextSubscriptionID() const
 	return nextSubscriptionID_;
 }
 
+string StompClient::generateNextSubscriptionID()
+{
+	string nextSubscriptionIDStr = to_string(nextSubscriptionID_);
+	nextSubscriptionID_++;
+	return nextSubscriptionIDStr;
+}
+
 int StompClient::getNextReceiptID() const
 {
 	return nextReceiptID_;
+}
+
+string StompClient::generateNextReceiptID()
+{
+	string nextReceiptIDStr = to_string(nextReceiptID_);
+	nextReceiptID_++;
+	return nextReceiptIDStr;
 }
 
 // Stomp client implementation:

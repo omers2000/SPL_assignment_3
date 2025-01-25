@@ -102,3 +102,4 @@ client/bin/*
 server/target/*
 .vscode/settings.json
 
+client/src/test

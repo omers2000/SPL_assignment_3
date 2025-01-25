@@ -21,7 +21,7 @@ private:
     int nextSubscriptionID_;
     int nextReceiptID_;
     unordered_map<string, int> channelToSubscriptionID_;
-    //todo: thread protect this
+    // todo: thread protect this
     unordered_map<string, vector<Event>> channelToEvents_;
 
     mutable mutex responseLock_;        // Synchronization lock
@@ -144,11 +144,31 @@ public:
     int getNextSubscriptionID() const;
 
     /**
+     * @brief Generates the next subscription ID.
+     *
+     * This function generates a unique subscription ID for the next subscription.
+     *
+     * @return A string representing the next subscription ID.
+     */
+    string generateNextSubscriptionID();
+
+    /**
      * @brief Gets the next receipt ID.
      *
      * @return int The next receipt ID.
      */
     int getNextReceiptID() const;
+
+    /**
+     * @brief Generates the next unique receipt ID.
+     *
+     * This function is responsible for creating a new, unique receipt ID
+     * each time it is called. The receipt ID is typically used to track
+     * and acknowledge messages in the STOMP protocol.
+     *
+     * @return A string representing the next unique receipt ID.
+     */
+    string generateNextReceiptID();
 
     /**
      * @brief Gets the channel to subscription ID map.

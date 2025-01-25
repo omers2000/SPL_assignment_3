@@ -20,11 +20,11 @@
         },
         {
             "type": "shell",
-            "label": "mvn compile",
+            "label": "mvn clean compile",
             "command": "mvn",
-            "args": ["compile"],
+            "args": ["clean", "compile"],
             "options": {
-                "cwd": "${workspaceFolder}/server"
+            "cwd": "${workspaceFolder}/server"
             }
         }
     ],
