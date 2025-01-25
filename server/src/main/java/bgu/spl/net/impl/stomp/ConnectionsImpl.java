@@ -42,15 +42,17 @@ public class ConnectionsImpl<T> implements Connections<Frame> {
     }
 
     @Override
-    public void send(String channel, Frame msg) {
+    public void send(String channel, Frame msg, int connectionId) {
         if (msg.getKeyByHeader("destination").charAt(0) != '/') {
             msg.addHeader("destination", '/' + msg.getKeyByHeader("destination"));
         }
         if (channels.containsKey(channel)) {
             HashMap<Integer, Integer> subscribers = channels.get(channel);
-            for (int connectionId : subscribers.keySet()) {
-                msg.addHeader("message-id", String.valueOf(this.messageCounter.getAndIncrement()));
-                send(connectionId, msg);
+            for (int receiverId : subscribers.keySet()) {
+                if (receiverId != connectionId){
+                    msg.addHeader("message-id", String.valueOf(this.messageCounter.getAndIncrement()));
+                    send(receiverId, msg);
+                }
             }
         }
     }

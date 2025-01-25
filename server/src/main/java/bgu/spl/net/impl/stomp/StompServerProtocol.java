@@ -165,7 +165,7 @@ public class StompServerProtocol implements StompMessagingProtocol<Frame> {
         HashMap<String, String> headers = new HashMap<>();
         headers.put("subscription", connections.getChannels().get(channel).get(connectionId).toString());
         headers.put("destination", channel);
-        connections.send(channel, new Frame("MESSAGE", headers, message.getBody()));
+        connections.send(channel, new Frame("MESSAGE", headers, message.getBody()), this.connectionId);
     }
 
     /**
