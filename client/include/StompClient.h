@@ -29,6 +29,9 @@ private:
     Frame lastResponse_;                // Stores last non-MESSAGE frame
     bool lastResponseUpdated_;          // Flag to indicate if lastResponse_ is updated
 
+    mutable mutex loginLock_; // Synchronization lock
+    condition_variable_any loginCV_; // Condition variable
+
 public:
     /**
      * @brief Constructs a new StompClient object.
@@ -91,7 +94,7 @@ public:
      * @param user The user for whom the summary is generated.
      * @param outputFile The file to write the summary to.
      */
-    void summarize(string &channelName, string &user, string &outputFile);
+    void summary(string &channelName, string &user, string &outputFile);
 
     /**
      * @brief Listens for incoming messages from the server.

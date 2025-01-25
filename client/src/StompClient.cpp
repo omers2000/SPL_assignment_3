@@ -91,7 +91,7 @@ void handleUserInput(StompClient &client)
 				string channelName = commandArgs[1];
 				string user = commandArgs[2];
 				string outputFile = commandArgs[3];
-				client.summarize(channelName, user, outputFile);
+				client.summary(channelName, user, outputFile);
 			}
 		}
 		else if (commandArgs[0] == "logout")
@@ -112,33 +112,39 @@ void StompClient::listen()
 
 	while (true)
 	{
-		// todo: use a condition variable to wake up the thread when logged in to prevent busy waiting
-		if (loggedIn_)
+		unique_lock<mutex> lock(loginLock_);
+		loginCV_.wait(lock, [this]
+					  { return loggedIn_; });
+
+		Frame frame = stompProtocol_.receiveFrame();
+		if (frame.getCommand() == "MESSAGE")
 		{
-			Frame frame = stompProtocol_.receiveFrame();
-			if (frame.getCommand() == "MESSAGE")
+			string destination = frame.getHeader("destination");
+			if (channelToEvents_.find(destination) != channelToEvents_.end())
 			{
-				string destination = frame.getHeader("destination");
-				if (channelToEvents_.find(destination) != channelToEvents_.end())
-				{
-					Event event = Event(frame.getBody());
-					channelToEvents_[destination].push_back(event);
-					cout << "Received event on channel " << destination << ": " << event.get_name() << endl;
-				}
-				else
-				{
-					cerr << "Received message for unknown channel " << destination << endl;
-				}
+				Event event = Event(frame.getBody());
+				channelToEvents_[destination].push_back(event);
+				cout << "Received event on channel " << destination << ": " << event.get_name() << endl;
 			}
 			else
 			{
-				// Store last response (not a MESSAGE frame)
-				{
-					unique_lock<mutex> lock(responseLock_);
-					lastResponse_ = frame;
-					lastResponseUpdated_ = true;
-				}
+				cerr << "Received message for unknown channel " << destination << endl;
+			}
+		}
+		else
+		{
+			// Store last response (not a MESSAGE frame)
+			{
+				// unique_lock<mutex> lock(responseLock_);
+				lastResponse_ = frame;
+				lastResponseUpdated_ = true;
 				responseCV_.notify_all(); // Wake up waiting threads
+
+				if (frame.getCommand() == "ERROR")
+				{
+					loggedIn_ = false;
+					loginCV_.notify_all(); // Notify the condition variable
+				}
 			}
 		}
 	}
@@ -159,7 +165,10 @@ Frame StompClient::getResponse()
 
 StompClient::StompClient() : stompProtocol_(), loggedIn_(false), username_(), password_(), nextSubscriptionID_(0), nextReceiptID_(0),
 							 channelToSubscriptionID_(), channelToEvents_(),
-							 responseLock_(), responseCV_(), lastResponse_("EMPTY"), lastResponseUpdated_(false) {}
+							 responseLock_(), responseCV_(), lastResponse_("EMPTY"), lastResponseUpdated_(false),
+							 loginLock_(), loginCV_()
+{
+}
 
 StompClient::~StompClient()
 {
@@ -194,6 +203,7 @@ void StompClient::login(string &host, short port, string &username, string &pass
 		username_ = username;
 		password_ = password;
 		loggedIn_ = true;
+		loginCV_.notify_all();
 		cout << "Login successful" << endl;
 	}
 	else if (response.getCommand() == "ERROR")
@@ -215,13 +225,14 @@ void StompClient::logout()
 	disconnectFrame.addHeader("receipt", generateNextReceiptID());
 
 	stompProtocol_.sendFrame(disconnectFrame.toString());
-	Frame response = stompProtocol_.receiveFrame();
+	Frame response = getResponse();
 
 	if (response.getCommand() == "RECEIPT")
 	{
 		cout << "Disconnected from server" << endl;
 		// todo: decide whether to delete the data from the client or not
 		loggedIn_ = false;
+		loginCV_.notify_all();
 		stompProtocol_.disconnect();
 	}
 }
@@ -240,7 +251,7 @@ void StompClient::join(string &destination)
 	subscribeFrame.addHeader("receipt", generateNextReceiptID());
 
 	stompProtocol_.sendFrame(subscribeFrame.toString());
-	Frame response = stompProtocol_.receiveFrame();
+	Frame response = getResponse();
 
 	if (response.getCommand() == "RECEIPT")
 	{
@@ -269,7 +280,7 @@ void StompClient::exit(string &destination)
 	unsubscribeFrame.addHeader("receipt", generateNextReceiptID());
 
 	stompProtocol_.sendFrame(unsubscribeFrame.toString());
-	Frame response = stompProtocol_.receiveFrame();
+	Frame response = getResponse();
 
 	if (response.getCommand() == "RECEIPT")
 	{
@@ -329,7 +340,7 @@ void StompClient::send(string &destination, string &body)
 
 	// TODO: deal with the case where the user is not subscribed to the channel
 	stompProtocol_.sendFrame(frameToSend.toString());
-	Frame response = stompProtocol_.receiveFrame();
+	Frame response = getResponse();
 
 	if (response.getCommand() == "ERROR")
 	{
@@ -338,7 +349,7 @@ void StompClient::send(string &destination, string &body)
 	}
 }
 
-void StompClient::summarize(string &channelName, string &user, string &outputFile)
+void StompClient::summary(string &channelName, string &user, string &outputFile)
 {
 	if (channelToEvents_.find(channelName) == channelToEvents_.end())
 	{
@@ -462,6 +473,7 @@ void StompClient::handleError(Frame &response)
 	cout << response.toString() << endl;
 	// todo: decide whether to delete the data from the client or not
 	loggedIn_ = false;
+	loginCV_.notify_all();
 	stompProtocol_.disconnect();
 }
 
@@ -470,7 +482,6 @@ int main(int argc, char *argv[])
 {
 	StompClient client;
 
-	// std::thread receiveThread(&StompClient::listen, &client);
+	thread receiveThread(&StompClient::listen, &client);
 	handleUserInput(client);
-	// receiveThread.join();
 }

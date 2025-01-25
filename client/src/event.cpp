@@ -129,10 +129,10 @@ Event::Event(const std::string &frame_body) : channel_name(""), city(""),
 
 string Event::toString() const
 {
-    string eventString = "user: " + eventOwnerUser + "\n";
-    eventString += "city: " + city + "\n";
-    eventString += "event name: " + name + "\n";
-    eventString += "date time: " + to_string(date_time) + "\n";
+    string eventString = "user:" + eventOwnerUser + "\n";
+    eventString += "city:" + city + "\n";
+    eventString += "event name:" + name + "\n";
+    eventString += "date time:" + to_string(date_time) + "\n";
     eventString += "general information:\n";
     for (auto &info : general_information)
     {

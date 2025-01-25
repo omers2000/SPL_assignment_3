@@ -22,7 +22,7 @@ std::string ClientUtils::epochToDateTimeString(int epoch)
     oss << std::setfill('0')
         << std::setw(2) << timeinfo->tm_mday << "/"
         << std::setw(2) << (timeinfo->tm_mon + 1) << "/"
-        << (timeinfo->tm_year + 1900) << "_"
+        << (timeinfo->tm_year + 1900) << " "
         << std::setw(2) << timeinfo->tm_hour << ":"
         << std::setw(2) << timeinfo->tm_min;
 
