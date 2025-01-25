@@ -88,7 +88,7 @@ public class ConnectionsImpl<T> implements Connections<Frame> {
 
     @Override
     public void cleanClient(int connectionId, String username) {
-        users.remove(username);
+        users.get(username).logout();
         for (HashMap<Integer, Integer> subs : channels.values()){
             subs.remove(connectionId);
         }
