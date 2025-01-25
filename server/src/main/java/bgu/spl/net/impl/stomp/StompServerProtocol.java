@@ -108,9 +108,6 @@ public class StompServerProtocol implements StompMessagingProtocol<Frame> {
 
     private void handleSubscribe(Frame message) {
         String channel = message.getKeyByHeader("destination");
-        if (channel.charAt(0) == '/') {
-            channel = channel.substring(1);
-        }
         connections.addChannel(channel);
         HashMap<Integer, Integer> channelSubs = connections.getChannels().get(channel);
         if (channelSubs.containsKey(connectionId)) {

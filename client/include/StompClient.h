@@ -21,8 +21,9 @@ private:
     int nextSubscriptionID_;
     int nextReceiptID_;
     unordered_map<string, int> channelToSubscriptionID_;
-    // todo: thread protect this
+    
     unordered_map<string, vector<Event>> channelToEvents_;
+    mutable mutex channelToEventsMapLock_; // Synchronization lock
 
     mutable mutex responseLock_;        // Synchronization lock
     condition_variable_any responseCV_; // Condition variable
@@ -31,6 +32,8 @@ private:
 
     mutable mutex loginLock_; // Synchronization lock
     condition_variable_any loginCV_; // Condition variable
+
+    
 
 public:
     /**

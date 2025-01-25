@@ -120,6 +120,8 @@ void StompClient::listen()
 		if (frame.getCommand() == "MESSAGE")
 		{
 			string destination = frame.getHeader("destination");
+
+			lock_guard<mutex> eventMaplock(channelToEventsMapLock_);
 			if (channelToEvents_.find(destination) != channelToEvents_.end())
 			{
 				Event event = Event(frame.getBody());
@@ -135,7 +137,6 @@ void StompClient::listen()
 		{
 			// Store last response (not a MESSAGE frame)
 			{
-				// unique_lock<mutex> lock(responseLock_);
 				lastResponse_ = frame;
 				lastResponseUpdated_ = true;
 				responseCV_.notify_all(); // Wake up waiting threads
@@ -164,11 +165,9 @@ Frame StompClient::getResponse()
 }
 
 StompClient::StompClient() : stompProtocol_(), loggedIn_(false), username_(), password_(), nextSubscriptionID_(0), nextReceiptID_(0),
-							 channelToSubscriptionID_(), channelToEvents_(),
+							 channelToSubscriptionID_(), channelToEvents_(), channelToEventsMapLock_(),
 							 responseLock_(), responseCV_(), lastResponse_("EMPTY"), lastResponseUpdated_(false),
-							 loginLock_(), loginCV_()
-{
-}
+							 loginLock_(), loginCV_() {}
 
 StompClient::~StompClient()
 {
@@ -230,7 +229,11 @@ void StompClient::logout()
 	if (response.getCommand() == "RECEIPT")
 	{
 		cout << "Disconnected from server" << endl;
-		// todo: decide whether to delete the data from the client or not
+		{
+			lock_guard<mutex> eventMapLock(channelToEventsMapLock_);
+			channelToSubscriptionID_.clear();
+		}
+		channelToEvents_.clear();
 		loggedIn_ = false;
 		loginCV_.notify_all();
 		stompProtocol_.disconnect();
@@ -285,16 +288,14 @@ void StompClient::exit(string &destination)
 	if (response.getCommand() == "RECEIPT")
 	{
 		cout << "Exited Channel " << destination << endl;
-		// todo: decide whether to delete the channel from the maps or not
+		lock_guard<mutex> eventMapLock(channelToEventsMapLock_);
 		channelToSubscriptionID_.erase(destination);
 		channelToEvents_.erase(destination);
 	}
 	else if (response.getCommand() == "ERROR")
 	{
 		cout << "Error exiting channel " << destination << endl;
-		cout << response.toString() << endl;
-		loggedIn_ = false;
-		stompProtocol_.disconnect();
+		handleError(response);
 	}
 }
 
@@ -316,6 +317,8 @@ void StompClient::report(string &filePath)
 				event.setEventOwnerUser(username_);
 				string eventString = event.toString();
 				send(names_and_events.channel_name, eventString);
+
+				lock_guard<mutex> eventMaplock(channelToEventsMapLock_);
 				channelToEvents_[names_and_events.channel_name].push_back(event);
 			}
 			cout << "Reports sent successfully" << endl;
@@ -338,7 +341,6 @@ void StompClient::send(string &destination, string &body)
 	frameToSend.addHeader("receipt", generateNextReceiptID());
 	frameToSend.setBody(body);
 
-	// TODO: deal with the case where the user is not subscribed to the channel
 	stompProtocol_.sendFrame(frameToSend.toString());
 	Frame response = getResponse();
 
@@ -351,6 +353,7 @@ void StompClient::send(string &destination, string &body)
 
 void StompClient::summary(string &channelName, string &user, string &outputFile)
 {
+	unique_lock<mutex> eventMaplock(channelToEventsMapLock_);
 	if (channelToEvents_.find(channelName) == channelToEvents_.end())
 	{
 		cerr << "Channel " << channelName << " not found." << endl;
@@ -358,6 +361,8 @@ void StompClient::summary(string &channelName, string &user, string &outputFile)
 	}
 
 	vector<Event> events = channelToEvents_[channelName];
+	eventMaplock.unlock(); // Unlock the mutex as we no longer need to access shared data
+
 	vector<Event> userEvents;
 
 	// Filter events by user
@@ -451,9 +456,8 @@ int StompClient::getNextSubscriptionID() const
 
 string StompClient::generateNextSubscriptionID()
 {
-	string nextSubscriptionIDStr = to_string(nextSubscriptionID_);
 	nextSubscriptionID_++;
-	return nextSubscriptionIDStr;
+	return to_string(nextSubscriptionID_);
 }
 
 int StompClient::getNextReceiptID() const
@@ -463,15 +467,19 @@ int StompClient::getNextReceiptID() const
 
 string StompClient::generateNextReceiptID()
 {
-	string nextReceiptIDStr = to_string(nextReceiptID_);
 	nextReceiptID_++;
-	return nextReceiptIDStr;
+	return to_string(nextReceiptID_);
+	;
 }
 
 void StompClient::handleError(Frame &response)
 {
 	cout << response.toString() << endl;
-	// todo: decide whether to delete the data from the client or not
+	{
+		lock_guard<mutex> eventMapLock(channelToEventsMapLock_);
+		channelToSubscriptionID_.clear();
+	}
+	channelToEvents_.clear();
 	loggedIn_ = false;
 	loginCV_.notify_all();
 	stompProtocol_.disconnect();
