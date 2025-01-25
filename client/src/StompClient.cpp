@@ -10,8 +10,9 @@ void handleUserInput(StompClient &client)
 	vector<string> commandArgs;
 	while (true)
 	{
-		cout << "Enter command and arguments (login, join, exit, report, summarize, logout):" << endl;
+		cout << "Enter command and arguments (login, join, exit, report, summary, logout):" << endl;
 		getline(cin, command);
+		commandArgs.clear();
 		ClientUtils::split_str(command, ' ', commandArgs);
 
 		if (commandArgs[0] == "login")
@@ -102,8 +103,6 @@ void handleUserInput(StompClient &client)
 		{
 			cout << "Unknown command" << endl;
 		}
-
-		commandArgs.clear();
 	}
 }
 
@@ -199,9 +198,8 @@ void StompClient::login(string &host, short port, string &username, string &pass
 	}
 	else if (response.getCommand() == "ERROR")
 	{
-		stompProtocol_.disconnect();
 		cout << "Login failed" << endl;
-		cout << response.getBody() << endl;
+		handleError(response);
 	}
 }
 
@@ -222,12 +220,9 @@ void StompClient::logout()
 	if (response.getCommand() == "RECEIPT")
 	{
 		cout << "Disconnected from server" << endl;
+		// todo: decide whether to delete the data from the client or not
 		loggedIn_ = false;
 		stompProtocol_.disconnect();
-	}
-	else if (response.getCommand() == "ERROR")
-	{
-		// todo: handle error
 	}
 }
 
@@ -256,7 +251,8 @@ void StompClient::join(string &destination)
 
 	else if (response.getCommand() == "ERROR")
 	{
-		// todo: handle error types: User is already subscribed to this channel, etc.
+		cout << "Error joining channel " << destination << endl;
+		handleError(response);
 	}
 }
 
@@ -284,7 +280,10 @@ void StompClient::exit(string &destination)
 	}
 	else if (response.getCommand() == "ERROR")
 	{
-		// todo: handle error
+		cout << "Error exiting channel " << destination << endl;
+		cout << response.toString() << endl;
+		loggedIn_ = false;
+		stompProtocol_.disconnect();
 	}
 }
 
@@ -293,18 +292,31 @@ void StompClient::report(string &filePath)
 	try
 	{
 		names_and_events names_and_events = parseEventsFile(filePath);
-		for (Event event : names_and_events.events)
+		if (!names_and_events.events.empty())
 		{
-			event.setEventOwnerUser(username_);
-			string eventString = event.toString();
-			send(names_and_events.channel_name, eventString);
-			channelToEvents_[names_and_events.channel_name].push_back(event);
+			for (Event event : names_and_events.events)
+			{
+				if (!loggedIn_)
+				{
+					cout << "The client was disconnected, couldn't report " << filePath << endl;
+					return;
+				}
+
+				event.setEventOwnerUser(username_);
+				string eventString = event.toString();
+				send(names_and_events.channel_name, eventString);
+				channelToEvents_[names_and_events.channel_name].push_back(event);
+			}
+			cout << "Reports sent successfully" << endl;
+		}
+		else
+		{
+			cout << "No events to report in" << filePath << endl;
 		}
 	}
 	catch (const std::exception &e)
 	{
-		// todo: handle error properly
-		cerr << "Couldn't read file: " << e.what() << endl;
+		cerr << "Couldn't read file: " << e.what() << "\nenter full file path" << endl;
 	}
 }
 
@@ -318,15 +330,11 @@ void StompClient::send(string &destination, string &body)
 	// TODO: deal with the case where the user is not subscribed to the channel
 	stompProtocol_.sendFrame(frameToSend.toString());
 	Frame response = stompProtocol_.receiveFrame();
-	cout << "Response: " << response.toString() << endl;
-	
-	if (response.getCommand() == "RECEIPT")
+
+	if (response.getCommand() == "ERROR")
 	{
-		cout << "Message sent successfully" << endl;
-	}
-	else if (response.getCommand() == "ERROR")
-	{
-		// todo: handle error
+		cout << "Error sending message" << endl;
+		handleError(response);
 	}
 }
 
@@ -357,11 +365,12 @@ void StompClient::summarize(string &channelName, string &user, string &outputFil
 
 	for (const auto &event : userEvents)
 	{
-		if (event.get_general_information().at("active") == "true")
+		auto generalInfo = event.get_general_information();
+		if (generalInfo["active"] == "true")
 		{
 			activeCount++;
 		}
-		if (event.get_general_information().at("forces arrival at scene") == "true")
+		if (generalInfo["forces arrival at scene"] == "true")
 		{
 			forcesArrivalCount++;
 		}
@@ -379,10 +388,17 @@ void StompClient::summarize(string &channelName, string &user, string &outputFil
 	outFile << "Stats:\n";
 	outFile << "Total: " << totalReports << "\n";
 	outFile << "active: " << activeCount << "\n";
-	outFile << "forces arrival at scene: " << forcesArrivalCount << "\n";
+	outFile << "forces arrival at scene: " << forcesArrivalCount << "\n\n";
 	outFile << "Event Reports:\n";
 
-	// todo: ensure that Reports are sorted by date_time by time and after that by event_name lexicographically.
+	// Sort userEvents by date_time and then by event_name lexicographically
+	std::sort(userEvents.begin(), userEvents.end(), [](const Event &a, const Event &b)
+			  {
+		if (a.get_date_time() == b.get_date_time()) {
+			return a.get_name() < b.get_name();
+		}
+		return a.get_date_time() < b.get_date_time(); });
+
 	int reportNumber = 1;
 	for (const auto &event : userEvents)
 	{
@@ -390,10 +406,15 @@ void StompClient::summarize(string &channelName, string &user, string &outputFil
 		outFile << "city: " << event.get_city() << "\n";
 		outFile << "date time: " << ClientUtils::epochToDateTimeString(event.get_date_time()) << "\n";
 		outFile << "event name: " << event.get_name() << "\n";
-		outFile << "summary: " << event.get_description() << "\n";
+		string description = event.get_description();
+		if (description.length() > 27)
+		{
+			description = description.substr(0, 27) + "...";
+		}
+		outFile << "summary: " << description << "\n";
 		outFile << "\n";
 	}
-
+	cout << "Summary written to " << outputFile << endl;
 	outFile.close();
 }
 
@@ -434,6 +455,14 @@ string StompClient::generateNextReceiptID()
 	string nextReceiptIDStr = to_string(nextReceiptID_);
 	nextReceiptID_++;
 	return nextReceiptIDStr;
+}
+
+void StompClient::handleError(Frame &response)
+{
+	cout << response.toString() << endl;
+	// todo: decide whether to delete the data from the client or not
+	loggedIn_ = false;
+	stompProtocol_.disconnect();
 }
 
 // Stomp client implementation:

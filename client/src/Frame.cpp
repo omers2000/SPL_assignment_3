@@ -61,15 +61,29 @@ Frame Frame::parseFrame(const string &frameString)
     vector<string> lines = splitIntoLines(frameString);
 
     Frame frame(lines[0]);
-    for (size_t i = 1; i < lines.size() - 1; i++)
+    size_t i = 1;
+    for (; i < lines.size(); i++)
     {
+        if (lines[i].empty())
+        {
+            break;
+        }
         int colonPos = lines[i].find(':');
         string key = lines[i].substr(0, colonPos);
         string value = lines[i].substr(colonPos + 1);
         frame.addHeader(key, value);
     }
 
-    frame.setBody(lines[lines.size() - 1]);
+    string body;
+    for (i = i + 1; i < lines.size(); i++)
+    {
+        body += lines[i];
+        if (i < lines.size() - 1)
+        {
+            body += "\n";
+        }
+    }
+    frame.setBody(body);
     return frame;
 }
 

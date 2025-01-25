@@ -102,6 +102,15 @@ public:
     void listen();
 
     /**
+     * @brief Handles the error response from the server.
+     *
+     * This function processes the error frame received from the server and disconnects the client from the server
+     *
+     * @param response The error frame received from the server.
+     */
+    void handleError(Frame &response);
+
+    /**
      * @brief Gets the last response(non-MESSAGE) frame received from the server.
      *
      * @return Frame The last response frame.
