@@ -1,5 +1,6 @@
 #include "../include/event.h"
 #include "../include/json.hpp"
+#include "../include/clientUtils.h"
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -8,7 +9,6 @@
 #include <sstream>
 #include <cstring>
 
-#include "../include/keyboardInput.h"
 
 using namespace std;
 using json = nlohmann::json;
@@ -24,11 +24,13 @@ Event::~Event()
 {
 }
 
-void Event::setEventOwnerUser(std::string setEventOwnerUser) {
+void Event::setEventOwnerUser(std::string setEventOwnerUser)
+{
     eventOwnerUser = setEventOwnerUser;
 }
 
-const std::string &Event::getEventOwnerUser() const {
+const std::string &Event::getEventOwnerUser() const
+{
     return eventOwnerUser;
 }
 
@@ -62,56 +64,83 @@ const std::string &Event::get_description() const
     return this->description;
 }
 
-Event::Event(const std::string &frame_body): channel_name(""), city(""), 
-                                             name(""), date_time(0), description(""), general_information(),
-                                             eventOwnerUser("")
+Event::Event(const std::string &frame_body) : channel_name(""), city(""),
+                                              name(""), date_time(0), description(""), general_information(),
+                                              eventOwnerUser("")
 {
     stringstream ss(frame_body);
     string line;
     string eventDescription;
     map<string, string> general_information_from_string;
     bool inGeneralInformation = false;
-    while(getline(ss,line,'\n')){
+    while (getline(ss, line, '\n'))
+    {
         vector<string> lineArgs;
-        if(line.find(':') != string::npos) {
-            split_str(line, ':', lineArgs);
+        if (line.find(':') != string::npos)
+        {
+            ClientUtils::split_str(line, ':', lineArgs);
             string key = lineArgs.at(0);
             string val;
-            if(lineArgs.size() == 2) {
+            if (lineArgs.size() == 2)
+            {
                 val = lineArgs.at(1);
             }
-            if(key == "user") {
+            if (key == "user")
+            {
                 eventOwnerUser = val;
             }
-            if(key == "channel name") {
+            if (key == "channel name")
+            {
                 channel_name = val;
             }
-            if(key == "city") {
+            if (key == "city")
+            {
                 city = val;
             }
-            else if(key == "event name") {
+            else if (key == "event name")
+            {
                 name = val;
             }
-            else if(key == "date time") {
+            else if (key == "date time")
+            {
                 date_time = std::stoi(val);
             }
-            else if(key == "general information") {
+            else if (key == "general information")
+            {
                 inGeneralInformation = true;
                 continue;
             }
-            else if(key == "description") {
-                while(getline(ss,line,'\n')) {
+            else if (key == "description")
+            {
+                while (getline(ss, line, '\n'))
+                {
                     eventDescription += line + "\n";
                 }
                 description = eventDescription;
             }
 
-            if(inGeneralInformation) {
+            if (inGeneralInformation)
+            {
                 general_information_from_string[key.substr(1)] = val;
             }
         }
     }
     general_information = general_information_from_string;
+}
+
+string Event::toString() const
+{
+    string eventString = "user: " + eventOwnerUser + "\n";
+    eventString += "city: " + city + "\n";
+    eventString += "event name: " + name + "\n";
+    eventString += "date time: " + to_string(date_time) + "\n";
+    eventString += "general information:\n";
+    for (auto &info : general_information)
+    {
+        eventString += "\t" + info.first + ": " + info.second + "\n";
+    }
+    eventString += "description:\n" + description;
+    return eventString;
 }
 
 names_and_events parseEventsFile(std::string json_path)
