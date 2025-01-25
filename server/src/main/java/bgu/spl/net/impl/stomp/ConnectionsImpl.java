@@ -57,6 +57,9 @@ public class ConnectionsImpl<T> implements Connections<Frame> {
 
     @Override
     public void disconnect(int connectionId, String username) {
+        System.out.println(connectionId + ',' + username);
+        System.out.println(users.get(username) != null);
+        System.out.println(users.get(username).isLoggedIn());
         users.get(username).logout();
         for (HashMap<Integer, Integer> subs : channels.values()){
             subs.remove(connectionId);
@@ -88,7 +91,7 @@ public class ConnectionsImpl<T> implements Connections<Frame> {
 
     @Override
     public void cleanClient(int connectionId, String username) {
-        users.remove(username);
+        users.get(username).logout();
         for (HashMap<Integer, Integer> subs : channels.values()){
             subs.remove(connectionId);
         }

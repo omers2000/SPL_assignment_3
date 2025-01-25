@@ -1,0 +1,25 @@
+{
+    "channel_name": "ambulance",
+    "events": [
+        {
+            "event_name": "Drowning Incident",
+            "city": "Blue Bay",
+            "date_time": 1735080000,
+            "description": "A swimmer pulled from the water unconscious at Shoreline Beach. CPR performed on site.",
+            "general_information": {
+                "active": true,
+                "forces_arrival_at_scene": true
+            }
+        },
+        {
+            "event_name": "Pedestrian Injury",
+            "city": "Walkertown",
+            "date_time": 1735130400,
+            "description": "Pedestrian slipped on ice outside City Hall. Minor injuries reported.",
+            "general_information": {
+                "active": false,
+                "forces_arrival_at_scene": false
+            }
+        }
+    ]
+}
