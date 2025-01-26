@@ -6,7 +6,7 @@ EchoClient: .PHONY bin/ConnectionHandler.o bin/echoClient.o
 	g++ -o bin/EchoClient bin/ConnectionHandler.o bin/echoClient.o $(LDFLAGS)
 
 StompEMIClient: .PHONY bin/ConnectionHandler.o bin/StompClient.o bin/event.o bin/Frame.o bin/ClientUtils.o bin/StompProtocol.o
-	g++ -o bin/StompEMIClient bin/ConnectionHandler.o bin/StompClient.o bin/event.o bin/Frame.o bin/StompProtocol.o  bin/ClientUtils.o $(LDFLAGS)
+	g++ -o bin/StompEMIClient bin/ConnectionHandler.o bin/StompClient.o bin/event.o bin/Frame.o bin/StompProtocol.o  bin/clientUtils.o $(LDFLAGS)
 
 bin/ConnectionHandler.o: 
 	g++ $(CFLAGS) -o bin/ConnectionHandler.o src/ConnectionHandler.cpp
@@ -20,8 +20,8 @@ bin/event.o:
 bin/StompProtocol.o: 
 	g++ $(CFLAGS) -o bin/StompProtocol.o src/StompProtocol.cpp
 
-bin/ClientUtils.o: 
-	g++ $(CFLAGS) -o bin/ClientUtils.o src/ClientUtils.cpp
+bin/clientUtils.o: 
+	g++ $(CFLAGS) -o bin/clientUtils.o src/clientUtils.cpp
 
 bin/StompClient.o: 
 	g++ $(CFLAGS) -o bin/StompClient.o src/StompClient.cpp
