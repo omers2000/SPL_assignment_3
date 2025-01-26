@@ -98,7 +98,6 @@ hs_err_pid*
 
 .devcontainer/*
 .vscode/*
-client/bin/*
 server/target/*
 .vscode/settings.json
 

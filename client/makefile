@@ -5,7 +5,7 @@ all: StompEMIClient
 EchoClient: .PHONY bin/ConnectionHandler.o bin/echoClient.o
 	g++ -o bin/EchoClient bin/ConnectionHandler.o bin/echoClient.o $(LDFLAGS)
 
-StompEMIClient: .PHONY bin/ConnectionHandler.o bin/StompClient.o bin/event.o bin/Frame.o bin/ClientUtils.o bin/StompProtocol.o
+StompEMIClient: .PHONY bin/ConnectionHandler.o bin/StompClient.o bin/event.o bin/Frame.o bin/clientUtils.o bin/StompProtocol.o
 	g++ -o bin/StompEMIClient bin/ConnectionHandler.o bin/StompClient.o bin/event.o bin/Frame.o bin/StompProtocol.o  bin/clientUtils.o $(LDFLAGS)
 
 bin/ConnectionHandler.o: 
