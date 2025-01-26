@@ -22,14 +22,6 @@ public class StompServerProtocol implements StompMessagingProtocol<Frame> {
 
     @Override
     public void process(Frame message) {
-
-        System.out.println("Command: " + message.getCommand());
-        for (String key : message.getHeaders().keySet()) {
-            System.out.println(key + ": " + message.getKeyByHeader(key));
-        }
-        System.out.println("Body: " + message.getBody());
-        System.out.println("");
-
         switch (message.getCommand()) {
             case "DISCONNECT":
                 handleDisconnect(message);
@@ -58,9 +50,7 @@ public class StompServerProtocol implements StompMessagingProtocol<Frame> {
     }
 
     private void handleDisconnect(Frame message) {
-        System.out.println(username + ", " + connectionId);
         connections.disconnect(connectionId, username);
-        System.out.println("done disconnect");
         sendReceipt(message.getKeyByHeader("receipt"));
     }
 
@@ -70,7 +60,6 @@ public class StompServerProtocol implements StompMessagingProtocol<Frame> {
             this.username = messageUser.getUsername();
             if (connections.getUser(username) == null) {
                 connections.addUser(username, messageUser);
-                System.out.println(username + " registered - " + connections.getUser(username) != null);
             }
             User<Frame> regUser = connections.getUser(username);
             if (!regUser.getPassword().equals(messageUser.getPassword())){
@@ -82,7 +71,7 @@ public class StompServerProtocol implements StompMessagingProtocol<Frame> {
             else {
                 regUser.login();
                 sendConnected(message);
-                System.out.println(username + " logged in - " + connections.getUser(username).isLoggedIn());
+                System.out.println(username + " logged in");
             }
         }
     }

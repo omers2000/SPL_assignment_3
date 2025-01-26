@@ -25,13 +25,6 @@ public class ConnectionsImpl<T> implements Connections<Frame> {
 
     @Override
     public boolean send(int connectionId, Frame msg) {
-        System.out.println("Command: " + msg.getCommand());
-        for (String key : msg.getHeaders().keySet()) {
-            System.out.println(key + ": " + msg.getKeyByHeader(key));
-        }
-        System.out.println("body:" + msg.getBody());
-        System.out.println("");
-
         ConnectionHandler<Frame> handler = clients.get(connectionId);
         if (handler != null) {
             handler.send(msg);
@@ -56,9 +49,6 @@ public class ConnectionsImpl<T> implements Connections<Frame> {
 
     @Override
     public void disconnect(int connectionId, String username) {
-        System.out.println(connectionId + ',' + username);
-        System.out.println(users.get(username) != null);
-        System.out.println(users.get(username).isLoggedIn());
         users.get(username).logout();
         for (HashMap<Integer, Integer> subs : channels.values()){
             subs.remove(connectionId);
