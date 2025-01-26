@@ -1,11 +1,10 @@
 #include "../include/StompClient.h"
-#include "../include/clientUtils.h"
+#include "../include/ClientUtils.h"
 #include <fstream>
 #include "StompClient.h"
 
 void handleUserInput(StompClient &client)
 {
-	cout << "User input thread started" << endl;
 	string command;
 	vector<string> commandArgs;
 	while (true)
@@ -108,8 +107,6 @@ void handleUserInput(StompClient &client)
 
 void StompClient::listen()
 {
-	cout << "Listener thread started" << endl;
-
 	while (true)
 	{
 		unique_lock<mutex> lock(loginLock_);
@@ -386,7 +383,7 @@ void StompClient::summary(string &channelName, string &user, string &outputFile)
 		{
 			activeCount++;
 		}
-		if (generalInfo["forces arrival at scene"] == "true")
+		if (generalInfo["forces_arrival_at_scene"] == "true")
 		{
 			forcesArrivalCount++;
 		}

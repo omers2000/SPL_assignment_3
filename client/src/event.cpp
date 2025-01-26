@@ -1,6 +1,6 @@
 #include "../include/event.h"
 #include "../include/json.hpp"
-#include "../include/clientUtils.h"
+#include "../include/ClientUtils.h"
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -136,7 +136,7 @@ string Event::toString() const
     eventString += "general information:\n";
     for (auto &info : general_information)
     {
-        eventString += "\t" + info.first + ": " + info.second + "\n";
+        eventString += "\t" + info.first + ":" + info.second + "\n";
     }
     eventString += "description:\n" + description;
     return eventString;

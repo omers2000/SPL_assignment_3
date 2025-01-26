@@ -28,7 +28,6 @@ public class ConnectionsImpl<T> implements Connections<Frame> {
         ConnectionHandler<Frame> handler = clients.get(connectionId);
         if (handler != null) {
             handler.send(msg);
-            System.out.println("message sent");
             return true;
         }
         return false;
